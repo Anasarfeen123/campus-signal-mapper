@@ -24,6 +24,26 @@ def get_db():
         db.row_factory = sqlite3.Row
     return db
 
+def insert_sample(sample: Dict):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(
+        '''INSERT INTO samples (timestamp, latitude, longitude, carrier, dbm, network_type, device_id, download_mbps, upload_mbps)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+        (
+            sample['timestamp'],
+            sample['latitude'],
+            sample['longitude'],
+            sample.get('carrier'),
+            sample.get('dbm'),
+            sample.get('network_type'),
+            sample.get('device_id'),
+            sample.get('download_mbps'),
+            sample.get('upload_mbps'),
+        ),
+    )
+    db.commit()
+    return cur.lastrowid
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -60,6 +80,11 @@ def insert_sample(sample: Dict):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/upload')
+def upload_page():
+    """Serve the page for users to contribute data."""
+    return render_template('upload.html')
 
 @app.route('/api/submit', methods=['POST'])
 def submit():

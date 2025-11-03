@@ -13,7 +13,9 @@ longitude REAL,
 carrier TEXT,
 dbm INTEGER,
 network_type TEXT,
-device_id TEXT
+device_id TEXT,
+download_mbps REAL,
+upload_mbps REAL
 )
 ''')
 cur.execute('CREATE INDEX IF NOT EXISTS idx_ts ON samples(timestamp)')
