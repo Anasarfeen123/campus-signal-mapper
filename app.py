@@ -104,10 +104,9 @@ def submit_data():
     lng = data.get('lng')
     
     # --- Validation ---
-    if not all([lat, lng, data.get('carrier'), data.get('network_type'), 
-                data.get('signal_strength'), data.get('download_speed')]):
-        return jsonify({"error": "Missing required fields"}), 400
-
+    if not all([lat, lng, data.get('carrier'), data.get('network_type')]):
+        return jsonify({"error": "Missing required fields (lat, lng, carrier, or network_type)"}), 400
+    
     if not is_within_bounds(lat, lng):
         return jsonify({"error": "Data is outside campus bounds"}), 403
 

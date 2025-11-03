@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS signal_data (
     lng REAL NOT NULL,
     carrier TEXT NOT NULL,
     network_type TEXT NOT NULL,
-    signal_strength REAL NOT NULL,
-    download_speed REAL NOT NULL,
+    signal_strength REAL, 
+    download_speed REAL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 """
