@@ -27,7 +27,7 @@ async function fetchSamples() {
     const qs = new URLSearchParams();
     if (carrier) qs.set('carrier', carrier);
     if (network) qs.set('network_type', network);
-    qs.set('limit', 2000); // You can adjust this limit
+    qs.set('limit', 200); // You can adjust this limit
 
     setStatus('loading', 'Loading...');
     try {

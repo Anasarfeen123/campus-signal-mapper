@@ -35,7 +35,7 @@ socketio = SocketIO(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour", "10 per minute"]
+    default_limits=["50000 per day", "5000 per hour", "500 per minute"]
 )
 
 # --- Geofencing (VIT Chennai Bounds) ---
@@ -90,7 +90,7 @@ def get_samples():
 
 
 @app.route('/api/submit', methods=['POST'])
-@limiter.limit("5 per minute") # Stricter limit for submission
+@limiter.limit("30 per minute") # Stricter limit for submission
 def submit_data():
     if not engine:
         return jsonify({"error": "Database not configured"}), 500
