@@ -114,15 +114,12 @@ async function handleLocationSuccess(position) {
     }
 
     const sample = {
-        'device_id': 'web-contributor',
-        'timestamp': Math.floor(Date.now() / 1000),
-        'latitude': lat,
-        'longitude': lon,
+        'lat': lat,                 // NOT 'latitude'
+        'lng': lon,                 // NOT 'longitude'
         'carrier': carrier,
-        'dbm': null,
         'network_type': networkType,
-        'download_mbps': downloadSpeed,
-        'upload_mbps': null
+        'signal_strength': null,    // NOT 'dbm'
+        'download_speed': downloadSpeed // NOT 'download_mbps'
     };
 
     // Send the data
