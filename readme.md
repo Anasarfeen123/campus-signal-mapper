@@ -91,6 +91,7 @@ Follow these steps to get the project running on your local machine.
 ---
 
 ## 📁 Project Structure
+
 ├── app.py # Main Flask server (API routes, Socket.IO) 
 ├── db_init.py # Script to initialize the database 
 ├── sample_sender.py # Script to send fake test data 
@@ -103,6 +104,7 @@ Follow these steps to get the project running on your local machine.
 └── templates/
   ├── index.html # HTML for the main map
   └── upload.html # HTML for the contribution page
+
 ---
 
 ## ⚙️ API Endpoints
