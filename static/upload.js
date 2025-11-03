@@ -1,23 +1,70 @@
 const contributeBtn = document.getElementById('contribute-btn');
 const contributionStatus = document.getElementById('contribution-status');
 const carrierSelect = document.getElementById('carrier');
+const carrierStatus = document.getElementById('carrier-status'); // New element
 
-// --- GEOFENCING BOUNDING BOX (must match app.py) ---
+// GEOFENCING
 const VIT_MIN_LAT = 12.8300;
 const VIT_MAX_LAT = 12.8500;
 const VIT_MIN_LON = 80.1430;
 const VIT_MAX_LON = 80.1630;
-// --- END GEOFENCING ---
+
+// --- NEW: Run carrier detection on page load ---
+window.addEventListener('load', detectCarrier);
+
+async function detectCarrier() {
+    carrierStatus.textContent = "Detecting your carrier...";
+    try {
+        const res = await fetch('/api/get-carrier');
+        if (!res.ok) {
+            throw new Error('Lookup failed');
+        }
+        const data = await res.json();
+        const detectedCarrier = data.carrier;
+
+        // Check if the detected carrier is in our dropdown options
+        let found = false;
+        for (let option of carrierSelect.options) {
+            // Check for partial match (e.g., "Airtel" in "Bharti Airtel")
+            if (detectedCarrier.includes(option.value) && option.value !== "") {
+                option.selected = true;
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            carrierStatus.textContent = "Carrier detected: " + detectedCarrier;
+            contributeBtn.disabled = false; // Enable submit button
+            carrierSelect.disabled = true; // Keep it locked
+        } else {
+            // Carrier not in our list, let user select
+            carrierStatus.textContent = "Could not auto-detect carrier. Please select one.";
+            carrierSelect.disabled = false;
+            carrierSelect.options[0].textContent = "-- Please select --";
+            contributeBtn.disabled = false; // Enable submit button
+        }
+
+    } catch (error) {
+        console.error("Carrier detection error:", error);
+        carrierStatus.textContent = "Auto-detect failed. Please select your carrier.";
+        carrierSelect.disabled = false; // Let user select manually
+        carrierSelect.options[0].textContent = "-- Please select --";
+        contributeBtn.disabled = false; // Enable submit button
+    }
+}
+// --- END NEW FUNCTION ---
+
 
 contributeBtn.addEventListener('click', contributeData);
 
 function contributeData() {
     
-    // --- THIS IS THE WIFI CHECK YOU WERE MISSING ---
+    // --- WIFI CHECK ---
     if (navigator.connection && navigator.connection.type === 'wifi') {
         alert("Error: Please disconnect from WiFi to submit mobile data.");
         contributionStatus.textContent = "Please disconnect from WiFi.";
-        return; // This stops the function from continuing
+        return; 
     }
     // --- END WIFI CHECK ---
 
@@ -48,7 +95,7 @@ async function handleLocationSuccess(position) {
     const lat = position.coords.latitude;
     const lon = position.coords.longitude;
 
-    // --- CLIENT-SIDE GEOFENCING CHECK ---
+    // --- GEOFENCING CHECK ---
     if (!(lat >= VIT_MIN_LAT && lat <= VIT_MAX_LAT && lon >= VIT_MIN_LON && lon <= VIT_MAX_LON)) {
         alert("Error: You must be on campus to contribute data.");
         contributionStatus.textContent = "Error: You must be on campus.";
@@ -59,12 +106,11 @@ async function handleLocationSuccess(position) {
     contributionStatus.textContent = "Got location, submitting...";
     const carrier = carrierSelect.value;
 
-    // Get network info from the browser's Connection API
     let networkType = "Unknown";
     let downloadSpeed = null;
     if (navigator.connection) {
-        networkType = navigator.connection.effectiveType.toUpperCase(); // e.g., "4G"
-        downloadSpeed = navigator.connection.downlink; // Estimated Mbps
+        networkType = navigator.connection.effectiveType.toUpperCase();
+        downloadSpeed = navigator.connection.downlink;
     }
 
     const sample = {
@@ -73,13 +119,13 @@ async function handleLocationSuccess(position) {
         'latitude': lat,
         'longitude': lon,
         'carrier': carrier,
-        'dbm': null, // We CANNOT get this from a browser
+        'dbm': null,
         'network_type': networkType,
         'download_mbps': downloadSpeed,
-        'upload_mbps': null // We can't easily get this
+        'upload_mbps': null
     };
 
-    // Send the data to the same API endpoint
+    // Send the data
     try {
         const res = await fetch('/api/submit', {
             method: 'POST',
@@ -92,13 +138,11 @@ async function handleLocationSuccess(position) {
         const result = await res.json();
         
         if (!res.ok) {
-            // Show the server's error message (e.g., "Rate limit exceeded")
             throw new Error(result.message || 'Server rejected the sample.');
         }
         
         contributionStatus.textContent = "Success! Data submitted. Thank you!";
         
-        // Clear the message after a few seconds
         setTimeout(() => { contributionStatus.textContent = ""; }, 4000);
 
     } catch (error) {

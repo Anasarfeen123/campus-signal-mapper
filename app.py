@@ -2,35 +2,31 @@ import sqlite3
 import time
 import json
 import os
+import requests  # <-- NEW IMPORT
 from flask import Flask, request, g, render_template, jsonify
 from flask_socketio import SocketIO, emit
 from datetime import datetime
 from typing import Dict
-# --- NEW IMPORTS FOR SPAM PROTECTION ---
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 DATABASE = 'signals.db'
 
-# --- GEOFENCING BOUNDING BOX for VIT Chennai ---
+# GEOFENCING BOUNDING BOX for VIT Chennai
 VIT_MIN_LAT = 12.8300
 VIT_MAX_LAT = 12.8500
 VIT_MIN_LON = 80.1430
 VIT_MAX_LON = 80.1630
-# --- END GEOFENCING ---
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'a-default-fallback-key-for-dev')
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
 
-# --- NEW RATE LIMITER SETUP ---
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "10 per minute"] # General limit
+    default_limits=["200 per day", "10 per minute"]
 )
-# --- END RATE LIMITER ---
-
 
 # DB helpers
 def get_db():
@@ -52,7 +48,6 @@ def validate_sample(sample: Dict) -> bool:
     if 'latitude' not in sample or 'longitude' not in sample:
         return False
     
-    # --- GEOFENCING CHECK ---
     try:
         lat = float(sample['latitude'])
         lon = float(sample['longitude'])
@@ -61,12 +56,11 @@ def validate_sample(sample: Dict) -> bool:
             return False
     except (ValueError, TypeError):
         return False
-    # --- END GEOFENCING CHECK ---
         
     return True
 
 
-# --- THIS IS THE SINGLE, CORRECT VERSION of insert_sample ---
+# The single, correct insert_sample function
 def insert_sample(sample: Dict):
     db = get_db()
     cur = db.cursor()
@@ -87,7 +81,6 @@ def insert_sample(sample: Dict):
     )
     db.commit()
     return cur.lastrowid
-# --- (The old, duplicate version has been removed) ---
 
 
 @app.route('/')
@@ -99,8 +92,36 @@ def upload_page():
     """Serve the page for users to contribute data."""
     return render_template('upload.html')
 
+# --- NEW API ENDPOINT ---
+@app.route('/api/get-carrier')
+@limiter.limit("15 per minute")
+def get_carrier():
+    """Get the client's carrier from their IP address."""
+    ip_address = request.remote_addr
+
+    # Handle localhost for testing
+    if ip_address == '127.0.0.1':
+        return jsonify({'carrier': 'Jio', 'message': 'Test IP detected'})
+
+    try:
+        # Call the third-party API as you described
+        url = f"http://ip-api.com/json/{ip_address}?fields=status,message,carrier"
+        response = requests.get(url, timeout=3)
+        response.raise_for_status() # Raise an error for bad responses
+        data = response.json()
+
+        if data.get('status') == 'success' and data.get('carrier'):
+            return jsonify({'carrier': data['carrier']})
+        else:
+            return jsonify({'error': data.get('message', 'Could not detect carrier')}), 404
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Carrier lookup failed: {e}")
+        return jsonify({'error': 'Carrier lookup service failed'}), 503
+# --- END NEW API ENDPOINT ---
+
 @app.route('/api/submit', methods=['POST'])
-@limiter.limit("5 per minute") # Apply a strict limit to this specific endpoint
+@limiter.limit("5 per minute")
 def submit():
     """Accept a JSON payload describing a single sample (or list of samples)."""
     payload = request.get_json()
@@ -109,7 +130,6 @@ def submit():
 
     try:
         if isinstance(payload, list):
-            # ... (code for handling lists) ...
             valid_samples = []
             for s in payload:
                 s.setdefault('timestamp', int(time.time()))
@@ -129,10 +149,8 @@ def submit():
         sample = payload
         sample.setdefault('timestamp', int(time.time()))
         
-        # --- VALIDATION CHECK ---
         if not validate_sample(sample):
             return jsonify({'status': 'error', 'message': 'Invalid data or location outside campus area.'}), 400
-        # --- END VALIDATION ---
 
         insert_sample(sample)
         socketio.emit('new_sample', sample)

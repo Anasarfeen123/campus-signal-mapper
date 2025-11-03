@@ -5,70 +5,19 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Contribute Data - VIT Signal Map</title>
         <style>
-            body { 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                background-color: #f4f4f9;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
+            /* ... (all existing styles) ... */
+            .control-group select:disabled {
+                background-color: #eee;
+                color: #777;
             }
-            .container { 
-                background: #ffffff; 
-                padding: 24px 32px; 
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                text-align: center;
-                width: 320px;
+            button:disabled {
+                background-color: #aaa;
+                cursor: not-allowed;
             }
-            h1 {
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin: 0 0 20px 0;
-            }
-            .control-group {
-                margin-bottom: 15px;
-                text-align: left;
-            }
-            .control-group label {
-                display: block;
-                font-weight: 500;
-                font-size: 0.9rem;
-                margin-bottom: 6px;
-            }
-            .control-group select {
-                width: 100%;
-                padding: 10px;
-                border-radius: 4px;
-                border: 1px solid #ccc;
-                background: #f9f9f9;
-                font-size: 1rem;
-            }
-            button {
-                width: 100%;
-                padding: 12px;
-                background-color: #007bff;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 1rem;
-                font-weight: 500;
-                cursor: pointer;
-                transition: background-color 0.2s;
-            }
-            button:hover {
-                background-color: #0056b3;
-            }
-            #contribution-status {
-                font-size: 0.9rem;
-                margin-top: 15px;
+            #carrier-status {
+                font-size: 0.85rem;
+                margin-top: 5px;
                 color: #555;
-                height: 20px;
-            }
-            .back-link {
-                margin-top: 20px;
-                font-size: 0.9rem;
             }
         </style>
     </head>
@@ -76,17 +25,15 @@
         <div class="container">
             <h1>Contribute Your Data</h1>
             <div class="control-group">
-                <label for="carrier">Select Your Carrier:</label>
-                <select id="carrier">
-                    <option value="">-- Please select --</option>
+                <label for="carrier">Your Carrier:</label>
+                <select id="carrier" disabled> <option value="">-- Detecting --</option>
                     <option>Airtel</option>
                     <option>Jio</option>
                     <option>VI</option>
                     <option>BSNL</option>
                 </select>
-            </div>
-            <button id="contribute-btn">Get Location & Submit</button>
-            <p id="contribution-status"></p>
+                <p id="carrier-status"></p> </div>
+            <button id="contribute-btn" disabled>Get Location & Submit</button> <p id="contribution-status"></p>
             <a href="/" class="back-link">Back to Map</a>
         </div>
         <script src="/static/upload.js"></script>
