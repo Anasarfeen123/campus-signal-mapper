@@ -25,13 +25,16 @@
         <div class="container">
             <h1>Contribute Your Data</h1>
             <div class="control-group">
-                <label for="carrier">Your Carrier:</label>
-                <select id="carrier" disabled> <option value="">-- Detecting --</option>
-                    <option>Airtel</option>
-                    <option>Jio</option>
-                    <option>VI</option>
-                    <option>BSNL</option>
+                <label for="carrier-select">Your Carrier:</label>
+                <select id="carrier-select">
+                    <option value="">-- Select Carrier --</option>
+                    <option value="Jio">Jio</option>
+                    <option value="Airtel">Airtel</option>
+                    <option value="VI">VI (Vodafone Idea)</option>
+                    <option value="BSNL">BSNL</option>
+                    <option value="Other">Other</option>
                 </select>
+                <button type="button" id="detect-carrier-btn">Detect My Carrier</button>
                 <p id="carrier-status"></p> </div>
             <button id="contribute-btn" disabled>Get Location & Submit</button> <p id="contribution-status"></p>
             <a href="/" class="back-link">Back to Map</a>

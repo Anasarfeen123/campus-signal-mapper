@@ -1,6 +1,6 @@
 const contributeBtn = document.getElementById('contribute-btn');
 const contributionStatus = document.getElementById('contribution-status');
-const carrierSelect = document.getElementById('carrier');
+const carrierSelect = document.getElementById('carrier-select');
 const carrierStatus = document.getElementById('carrier-status'); // New element
 
 // GEOFENCING
