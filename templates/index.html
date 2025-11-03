@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Campus Signal Map</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <style>
+            html,body,#map { height: 100%; margin:0; padding:0 }
+            .controls { position: absolute; top: 8px; left: 8px; z-index:1000; background: rgba(255,255,255,0.9); padding:8px; border-radius:6px }
+        </style>
+    </head>
+    <body>
+    <div id="map"></div>
+        <div class="controls">
+        <label>Carrier: <select id="carrier"><option value="">All</option><option>Airtel</option><option>Jio</option><option>VI</option><option>BSNL</option></select></label>
+        <label>Network: <select id="network"><option value="">All</option><option>3G</option><option>4G</option><option>5G</option></select></label>
+        <button id="refresh">Refresh</button>
+    </div>
+
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+        <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+        <script src="/static/main.js"></script>
+    </body>
+</html>
