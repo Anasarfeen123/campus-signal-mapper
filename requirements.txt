@@ -1,5 +1,8 @@
 Flask
-flask-socketio
-python-socketio
-eventlet
+Flask-SocketIO
 Flask-Limiter
+gunicorn
+eventlet
+requests
+SQLAlchemy
+psycopg2-binary

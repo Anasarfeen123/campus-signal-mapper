@@ -1,26 +1,45 @@
-"""Create SQLite DB."""
-import sqlite3
+import os
+from sqlalchemy import create_engine, text
 
+# Get the database URL from the environment variable
+# Example: "postgresql://user:password@hostname/dbname"
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-conn = sqlite3.connect('signals.db')
-cur = conn.cursor()
-cur.execute('''
-CREATE TABLE IF NOT EXISTS samples (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-timestamp INTEGER,
-latitude REAL,
-longitude REAL,
-carrier TEXT,
-dbm INTEGER,
-network_type TEXT,
-device_id TEXT,
-download_mbps REAL,
-upload_mbps REAL
-)
-''')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_ts ON samples(timestamp)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_loc ON samples(latitude, longitude)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_carrier ON samples(carrier)')
-conn.commit()
-conn.close()
-print('DB ready')
+if not DATABASE_URL:
+    raise ValueError("No DATABASE_URL environment variable set")
+
+# Create the table schema
+# Note: Using 'TEXT' for carrier and network_type is more flexible.
+# Using 'REAL' for numeric types is standard.
+CREATE_TABLE_QUERY = """
+CREATE TABLE IF NOT EXISTS signal_data (
+    id SERIAL PRIMARY KEY,
+    lat REAL NOT NULL,
+    lng REAL NOT NULL,
+    carrier TEXT NOT NULL,
+    network_type TEXT NOT NULL,
+    signal_strength REAL NOT NULL,
+    download_speed REAL NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+def initialize_database():
+    try:
+        # Create a database engine
+        engine = create_engine(DATABASE_URL)
+        
+        # Connect and execute the table creation query
+        with engine.connect() as connection:
+            connection.execute(text(CREATE_TABLE_QUERY))
+            connection.commit() # Commit the transaction
+            
+        print("Database connection successful.")
+        print("Table 'signal_data' is ready.")
+
+    except Exception as e:
+        print(f"Error connecting to database or initializing table: {e}")
+        print("Please check your DATABASE_URL environment variable.")
+
+if __name__ == "__main__":
+    initialize_database()
