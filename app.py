@@ -9,38 +9,37 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine, text
 
-# --- App and Database Setup ---
+# -------------------------------------------------
+# APP SETUP
+# -------------------------------------------------
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get(
+    'FLASK_SECRET_KEY', 'dev_secret_key'
+)
 
-# Load config from environment variables
-app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'a_very_secret_dev_key_fallback')
 DATABASE_URL = os.environ.get('DATABASE_URL')
-
 if not DATABASE_URL:
-    print("Warning: DATABASE_URL not set. App may not connect to DB.")
+    raise RuntimeError("DATABASE_URL not set")
 
-# Initialize SQLAlchemy engine
-# We use "isolation_level="AUTOCOMMIT"" for INSERTs to be visible immediately
-# This is simpler than managing sessions for this app's use case.
-try:
-    engine = create_engine(DATABASE_URL, isolation_level="AUTOCOMMIT")
-except Exception as e:
-    print(f"Error creating database engine: {e}")
-    engine = None
+engine = create_engine(
+    DATABASE_URL,
+    isolation_level="AUTOCOMMIT",
+    pool_pre_ping=True
+)
 
-# Initialize SocketIO
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Initialize Rate Limiter
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["50000 per day", "5000 per hour", "500 per minute"]
+    default_limits=["50000 per day", "5000 per hour"]
 )
 
-# --- Geofencing (VIT Chennai Bounds) ---
-# (No changes to this section)
+# -------------------------------------------------
+# CAMPUS GEOFENCE (AUTHORITATIVE)
+# -------------------------------------------------
+
 VIT_BOUNDS = {
     "min_lat": 12.839,
     "max_lat": 12.844,
@@ -49,159 +48,208 @@ VIT_BOUNDS = {
 }
 
 def is_within_bounds(lat, lng):
-    return (VIT_BOUNDS["min_lat"] <= lat <= VIT_BOUNDS["max_lat"] and
-            VIT_BOUNDS["min_lng"] <= lng <= VIT_BOUNDS["max_lng"])
+    return (
+        VIT_BOUNDS["min_lat"] <= lat <= VIT_BOUNDS["max_lat"] and
+        VIT_BOUNDS["min_lng"] <= lng <= VIT_BOUNDS["max_lng"]
+    )
 
-
-# --- API Endpoints (Modified for SQLAlchemy) ---
+# -------------------------------------------------
+# GET HEATMAP DATA
+# -------------------------------------------------
 
 @app.route('/api/samples')
 def get_samples():
-    if not engine:
-        return jsonify({"error": "Database not configured"}), 500
-
-    # Get query parameters
     carrier = request.args.get('carrier')
-    network_type = request.args.get('network_type')
+    network = request.args.get('network_type')
 
-    # Build the query dynamically
-    sql_query = "SELECT lat, lng, signal_strength, download_speed FROM signal_data"
+    sql = """
+        SELECT lat, lng, signal_strength, download_speed
+        FROM signal_data
+    """
+
     filters = []
     params = {}
 
     if carrier:
         filters.append("carrier = :carrier")
         params["carrier"] = carrier
-    if network_type:
-        filters.append("network_type = :network_type")
-        params["network_type"] = network_type
+    if network:
+        filters.append("network_type = :network")
+        params["network"] = network
 
     if filters:
-        sql_query += " WHERE " + " AND ".join(filters)
+        sql += " WHERE " + " AND ".join(filters)
 
-    try:
-        with engine.connect() as connection:
-            result = connection.execute(text(sql_query), params)
-            # Fetchall and convert to list of dicts
-            samples = [dict(row._mapping) for row in result]
-        return jsonify(samples)
-    except Exception as e:
-        print(f"Error fetching samples: {e}")
-        return jsonify({"error": f"Database query failed: {e}"}), 500
+    with engine.connect() as conn:
+        rows = conn.execute(text(sql), params)
+        return jsonify([dict(r._mapping) for r in rows])
 
+# -------------------------------------------------
+# SUBMIT DATA (OFFLINE SAFE)
+# -------------------------------------------------
 
 @app.route('/api/submit', methods=['POST'])
-@limiter.limit("30 per minute") # Stricter limit for submission
+@limiter.limit("5 per second")
 def submit_data():
-    if not engine:
-        return jsonify({"error": "Database not configured"}), 500
-
     data = request.json
     if not data:
         return jsonify({"error": "Invalid JSON"}), 400
 
-    # Use 'data.get' for safe dictionary access
-    lat = data.get('lat')
-    lng = data.get('lng')
-    
-    # --- Validation ---
-    if not all([lat, lng, data.get('carrier'), data.get('network_type')]):
-        return jsonify({"error": "Missing required fields (lat, lng, carrier, or network_type)"}), 400
-    
-    if not is_within_bounds(lat, lng):
-        return jsonify({"error": "Data is outside campus bounds"}), 403
+    # --- Required fields ---
+    try:
+        lat = float(data.get("lat"))
+        lng = float(data.get("lng"))
+        client_id = data.get("client_id")
+        created_at = int(data.get("created_at"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid coordinates or metadata"}), 400
 
-    # --- Database Insertion ---
-    sql_insert = """
-    INSERT INTO signal_data (lat, lng, carrier, network_type, signal_strength, download_speed)
-    VALUES (:lat, :lng, :carrier, :network_type, :signal_strength, :download_speed)
+    if not client_id:
+        return jsonify({"error": "Missing client_id"}), 400
+
+    if not is_within_bounds(lat, lng):
+        return jsonify({
+            "error": "OUT_OF_CAMPUS",
+            "message": "You are outside the VIT Chennai campus"
+        }), 403
+
+    sql = """
+        INSERT INTO signal_data (
+            lat, lng, carrier, network_type,
+            signal_strength, download_speed,
+            client_id, created_at
+        )
+        VALUES (
+            :lat, :lng, :carrier, :network_type,
+            :signal_strength, :download_speed,
+            :client_id, :created_at
+        )
+        ON CONFLICT (client_id) DO NOTHING
     """
-    
-    # Create a dictionary with the exact parameters for the query
-    data_point = {
+
+    payload = {
         "lat": lat,
         "lng": lng,
-        "carrier": data.get('carrier'),
-        "network_type": data.get('network_type'),
-        "signal_strength": data.get('signal_strength'),
-        "download_speed": data.get('download_speed')
+        "carrier": data.get("carrier"),
+        "network_type": data.get("network_type"),
+        "signal_strength": data.get("signal_strength"),
+        "download_speed": data.get("download_speed"),
+        "client_id": client_id,
+        "created_at": created_at
     }
 
-    try:
-        with engine.connect() as connection:
-            connection.execute(text(sql_insert), data_point)
-            # Autocommit is handled by the engine config
-            
-        # Emit to all connected clients
-        socketio.emit('new_data_point', data_point)
-        return jsonify({"success": True, "message": "Data submitted"}), 201
+    with engine.connect() as conn:
+        result = conn.execute(text(sql), payload)
 
-    except Exception as e:
-        print(f"Error inserting data: {e}")
-        return jsonify({"error": f"Database insert failed: {e}"}), 500
+    # Emit only if inserted (rowcount = 1)
+    if result.rowcount == 1:
+        socketio.emit("new_data_point", payload)
 
+    return jsonify({"success": True}), 201
 
-# --- Carrier Detection API (No changes) ---
+# -------------------------------------------------
+# OPTIONAL: BATCH SUBMIT (FOR FUTURE OFFLINE SYNC)
+# -------------------------------------------------
+
+@app.route('/api/submit/batch', methods=['POST'])
+def submit_batch():
+    samples = request.json
+    if not isinstance(samples, list):
+        return jsonify({"error": "Expected list"}), 400
+
+    inserted = 0
+
+    with engine.connect() as conn:
+        for s in samples:
+            try:
+                lat = float(s["lat"])
+                lng = float(s["lng"])
+                if not is_within_bounds(lat, lng):
+                    continue
+
+                conn.execute(text("""
+                    INSERT INTO signal_data (
+                        lat, lng, carrier, network_type,
+                        signal_strength, download_speed,
+                        client_id, created_at
+                    )
+                    VALUES (
+                        :lat, :lng, :carrier, :network_type,
+                        :signal_strength, :download_speed,
+                        :client_id, :created_at
+                    )
+                    ON CONFLICT (client_id) DO NOTHING
+                """), s)
+
+                inserted += 1
+            except Exception:
+                continue
+
+    return jsonify({"inserted": inserted}), 201
+
+# -------------------------------------------------
+# CARRIER DETECTION
+# -------------------------------------------------
 
 @app.route('/api/get-carrier')
 def get_carrier():
-    # Use 'X-Forwarded-For' if behind a proxy, else fallback to remote_addr
-    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-    
-    # Handle localhost/private IPs for development
-    if ip_address.startswith(('127.', '192.', '10.', '172.')):
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+
+    if ip.startswith(('127.', '192.', '10.', '172.')):
         return jsonify({"carrier": "Unknown (Local IP)"})
-        
+
     try:
-        response = requests.get(f'https://ipinfo.io/{ip_address}/org')
-        if response.status_code == 200:
-            # The response is just the org string, e.g., "AS55836 Reliance Jio Infocomm Limited"
-            org_name = response.text.lower()
-            if "airtel" in org_name:
-                carrier = "Airtel"
-            elif "jio" in org_name:
-                carrier = "Jio"
-            elif "vodafone" in org_name or "idea" in org_name or "vi" in org_name:
-                carrier = "VI"
-            elif "bsnl" in org_name:
-                carrier = "BSNL"
-            else:
-                carrier = "Other"
-            return jsonify({"carrier": carrier})
+        r = requests.get(f"https://ipinfo.io/{ip}/org", timeout=3)
+        org = r.text.lower()
+
+        if "jio" in org:
+            carrier = "Jio"
+        elif "airtel" in org:
+            carrier = "Airtel"
+        elif "vodafone" in org or "idea" in org or "vi" in org:
+            carrier = "VI"
+        elif "bsnl" in org:
+            carrier = "BSNL"
         else:
-            return jsonify({"error": "Failed to detect carrier"}), 500
+            carrier = "Other"
+
+        return jsonify({"carrier": carrier})
     except requests.RequestException:
-        return jsonify({"error": "Carrier detection service failed"}), 503
+        return jsonify({"error": "Carrier detection failed"}), 503
 
-
-# --- Frontend Routes (No changes) ---
+# -------------------------------------------------
+# FRONTEND ROUTES
+# -------------------------------------------------
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/upload')
-def upload_page():
+def upload():
     return render_template('upload.html')
 
-
-# --- SocketIO Events (No changes) ---
+# -------------------------------------------------
+# SOCKET EVENTS
+# -------------------------------------------------
 
 @socketio.on('connect')
-def handle_connect():
-    print('Client connected')
-    emit('status', {'message': 'Connected to real-time server'})
+def on_connect():
+    print("Client connected")
 
 @socketio.on('disconnect')
-def handle_disconnect():
-    print('Client disconnected')
+def on_disconnect():
+    print("Client disconnected")
 
+# -------------------------------------------------
+# RUN
+# -------------------------------------------------
 
-# --- Main Runner ---
-
-if __name__ == '__main__':
-    print("Starting Flask-SocketIO server in development mode...")
-    # This runs the app in development
-    # For production, you will use:
-    # gunicorn --worker-class eventlet -w 1 app:app
-    socketio.run(app, debug=True, port=5000, allow_unsafe_werkzeug=True)
+if __name__ == "__main__":
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=5000,
+        debug=True,
+        allow_unsafe_werkzeug=True
+    )

@@ -5,7 +5,7 @@ import random
 # --- CONFIGURATION ---
 
 # Toggle this to False when you are ready to send to the live server
-USE_LOCALHOST = True 
+USE_LOCALHOST = False
 
 if USE_LOCALHOST:
     URL = 'http://localhost:5000/api/submit'

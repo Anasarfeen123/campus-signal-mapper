@@ -1,124 +1,211 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIT Chennai Signal Map</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIT Chennai Signal Map</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-    <style>
-        :root {
-            --primary-color: #007bff;
-            --primary-hover: #0056b3;
-            --card-bg: #ffffff;
-            --body-bg: #f4f7f6;
-            --text-color: #333;
-            --text-muted: #666;
-            --border-color: #e0e0e0;
-            --border-radius: 8px;
-            --shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
+<style>
+:root {
+  --primary:#2563eb;
+  --primary-hover:#1d4ed8;
+  --bg:#f4f7f6;
+  --card:rgba(255,255,255,.88);
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e2e8f0;
+  --radius:14px;
+  --shadow:0 10px 25px rgba(0,0,0,.12);
+  --offline-bg:#fff1f2;
+  --offline-text:#b91c1c;
+}
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-            background: var(--body-bg);
-        }
+html,body {
+  height:100%;
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto;
+  background:var(--bg);
+}
 
-        #map {
-            height: 100%;
-            width: 100%;
-        }
+#map {
+  height:100%;
+}
 
-        .controls {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            z-index: 1000;
-            background: var(--card-bg);
-            padding: 16px 20px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            min-width: 280px;
-        }
+/* Dim map when outside campus */
+.map-dim {
+  filter: grayscale(.8) brightness(.75);
+  transition: filter .35s ease;
+}
 
-        .controls h1 {
-            font-size: 1.3rem;
-            margin: 0 0 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+/* ---------- CONTROL PANEL ---------- */
+.controls {
+  position:absolute;
+  top:16px;
+  left:16px;
+  width:300px;
+  padding:18px;
+  background:linear-gradient(
+    180deg,
+    rgba(255,255,255,.95),
+    rgba(255,255,255,.85)
+  );
+  backdrop-filter:blur(14px);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  border:1px solid rgba(255,255,255,.45);
+  z-index:1000;
+}
 
-        .control-group {
-            margin-bottom: 12px;
-        }
+.header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
 
-        label {
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-bottom: 5px;
-            color: var(--text-muted);
-        }
+.header h1 {
+  font-size:1.1rem;
+  margin:0;
+  font-weight:700;
+}
 
-        select, input, button {
-            width: 100%;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            font-size: 0.95rem;
-        }
+/* ---------- STATUS ---------- */
+#status {
+  display:flex;
+  gap:6px;
+  font-size:.75rem;
+  color:var(--muted);
+  align-items:center;
+}
 
-        button {
-            cursor: pointer;
-            font-weight: 600;
-            background: #f8f9fa;
-        }
+#status-light {
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#94a3b8;
+  transition:.3s;
+}
 
-        button:hover {
-            background: #e2e6ea;
-        }
+#status-light.live {
+  background:#22c55e;
+  box-shadow:0 0 10px rgba(34,197,94,.8);
+  animation: liveGlow 2.5s ease-in-out infinite;
+}
 
-        #status {
-            display: flex;
-            align-items: center;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
+#status-light.loading {
+  background:#eab308;
+  animation:pulse 1.2s infinite;
+}
 
-        #status-light {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: #999;
-            margin-right: 7px;
-        }
+#status-light.disconnected {
+  background:#ef4444;
+}
 
-        #status-light.live { background: #28a745; }
-        #status-light.loading { background: #ffc107; }
-        #status-light.disconnected { background: #dc3545; }
+@keyframes pulse {
+  50% { opacity:.4 }
+}
 
-        .locate-btn {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 10px;
-        }
+@keyframes liveGlow {
+  0%,100% { box-shadow:0 0 6px rgba(34,197,94,.4); }
+  50% { box-shadow:0 0 14px rgba(34,197,94,.9); }
+}
 
-        .upload-link {
-            display: block;
-            text-align: center;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-        }
-    </style>
+/* ---------- OFFLINE ---------- */
+.offline-banner {
+  display:none;
+  margin-bottom:8px;
+  background:var(--offline-bg);
+  color:var(--offline-text);
+  border-radius:8px;
+  padding:6px;
+  font-size:.75rem;
+  font-weight:600;
+  text-align:center;
+}
+
+/* ---------- FORM ---------- */
+label {
+  font-size:.75rem;
+  font-weight:600;
+  color:var(--muted);
+}
+
+select {
+  width:100%;
+  padding:8px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  margin-bottom:10px;
+  background:#fff;
+}
+
+button {
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.15s;
+}
+
+.btn-primary {
+  background:var(--primary);
+  color:white;
+}
+
+.btn-primary:hover {
+  background:var(--primary-hover);
+}
+
+/* ---------- TOAST ---------- */
+.toast {
+  position:fixed;
+  bottom:26px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:#0f172a;
+  color:white;
+  padding:10px 18px;
+  border-radius:999px;
+  font-size:.85rem;
+  opacity:0;
+  pointer-events:none;
+  transition:.25s;
+  box-shadow:0 10px 25px rgba(0,0,0,.35);
+}
+
+.toast.show {
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+.toast.error { background:#991b1b; }
+.toast.success { background:#166534; }
+.toast.info { background:#0f172a; }
+
+/* ---------- CAMPUS POLYGON ---------- */
+.campus-boundary {
+  animation: campusPulse 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(37,99,235,.35));
+}
+
+@keyframes campusPulse {
+  0%,100% { opacity:.75; }
+  50% { opacity:1; }
+}
+
+/* ---------- MOBILE ---------- */
+@media (max-width:480px) {
+  .controls {
+    left:12px;
+    right:12px;
+    width:auto;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -126,67 +213,51 @@
 <div id="map"></div>
 
 <div class="controls">
-    <h1>
-        VIT Signal Map
-        <div id="status">
-            <div id="status-light"></div>
-            <span id="status-text">Connecting...</span>
-        </div>
-    </h1>
-
-    <div class="control-group">
-        <label for="heatmap-data">Show Data For</label>
-        <select id="heatmap-data">
-            <option value="dbm">Signal Strength (dBm)</option>
-            <option value="download">Download Speed (Mbps)</option>
-        </select>
+  <div class="header">
+    <h1>VIT Signal Map</h1>
+    <div id="status">
+      <div id="status-light"></div>
+      <span id="status-text">Connecting</span>
     </div>
+  </div>
 
-    <div class="control-group">
-        <label for="carrier-select">Your Carrier</label>
-        <select id="carrier-select">
-            <option value="">-- Select Carrier --</option>
-            <option value="Jio">Jio</option>
-            <option value="Airtel">Airtel</option>
-            <option value="VI">VI (Vodafone Idea)</option>
-            <option value="BSNL">BSNL</option>
-            <option value="Other">Other</option>
-        </select>
+  <div id="offline-indicator" class="offline-banner">
+    📴 Offline – live updates paused
+  </div>
 
-        <input
-            type="text"
-            id="custom-carrier"
-            placeholder="Enter custom carrier"
-            style="display:none; margin-top:8px;"
-        />
+  <label>Data Layer</label>
+  <select id="heatmap-data">
+    <option value="dbm">Signal Strength</option>
+    <option value="download">Download Speed</option>
+  </select>
 
-        <button id="detect-carrier-btn" style="margin-top:8px;">
-            Detect My Carrier
-        </button>
+  <label>Carrier</label>
+  <select id="carrier-select">
+    <option value="">All</option>
+    <option>Jio</option>
+    <option>Airtel</option>
+    <option>VI</option>
+    <option>BSNL</option>
+  </select>
 
-        <p id="carrier-status"></p>
-    </div>
+  <label>Network</label>
+  <select id="network">
+    <option value="">All</option>
+    <option>3G</option>
+    <option>4G</option>
+    <option>5G</option>
+  </select>
 
-    <div class="control-group">
-        <label for="network">Network</label>
-        <select id="network">
-            <option value="">All</option>
-            <option>3G</option>
-            <option>4G</option>
-            <option>5G</option>
-        </select>
-    </div>
-
-    <button id="locate-btn" class="locate-btn">
-        📍 Show My Location
-    </button>
-
-    <a href="/upload" class="upload-link">Contribute Your Data</a>
+  <button id="locate-btn" class="btn-primary">
+    📍 Show My Location
+  </button>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 <script src="/static/main.js"></script>
 
 </body>
