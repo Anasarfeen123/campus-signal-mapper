@@ -3,7 +3,7 @@ eventlet.monkey_patch()
 
 import os
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -221,18 +221,20 @@ def get_carrier():
 # FRONTEND ROUTES
 # -------------------------------------------------
 
-@app.route("/")
-def index():
+@app.route("/", methods=["GET"])
+def health():
+    return {"status": "ok", "service": "vit-signal-mapper-api"}, 200
+
+
+
+@app.route("/upload", methods=["GET"])
+def upload_info():
     return {
-        "status": "ok",
-        "service": "vitc-signal-mapper",
-        "frontend": "https://vit-signal-map-frontend.vercel.app"
-    }
+        "message": "Upload handled via /api/submit",
+        "method": "POST",
+        "format": "JSON"
+    }, 200
 
-
-@app.route('/upload')
-def upload():
-    return render_template('upload.html')
 
 # -------------------------------------------------
 # SOCKET EVENTS
