@@ -1,126 +1,157 @@
-// Set map to VIT Chennai coordinates and zoom in closer
+// ---------------- MAP SETUP ----------------
 const map = L.map('map').setView([12.8406, 80.1534], 17);
+
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
 }).addTo(map);
 
-// You can adjust radius and blur as needed
-const heatLayer = L.heatLayer([], { radius: 15, blur: 10, maxZoom: 17 }).addTo(map);
+const heatLayer = L.heatLayer([], {
+    radius: 15,
+    blur: 10,
+    maxZoom: 17
+}).addTo(map);
 
-// Get control elements
-const carrierSelect = document.getElementById('carrier');
+// ---------------- DOM ELEMENTS ----------------
+const carrierSelect = document.getElementById('carrier-select'); // FIXED
 const networkSelect = document.getElementById('network');
 const heatmapDataSelect = document.getElementById('heatmap-data');
 const statusLight = document.getElementById('status-light');
 const statusText = document.getElementById('status-text');
 
-// Function to update status
+// ---------------- STATUS HANDLING ----------------
 function setStatus(state, text) {
-    statusLight.className = state; // 'live', 'loading', 'disconnected'
+    statusLight.classList.remove('live', 'loading', 'disconnected');
+    statusLight.classList.add(state);
     statusText.textContent = text;
 }
 
+// ---------------- DATA FETCH ----------------
 async function fetchSamples() {
     const carrier = carrierSelect.value;
     const network = networkSelect.value;
     const heatmapType = heatmapDataSelect.value;
+
     const qs = new URLSearchParams();
     if (carrier) qs.set('carrier', carrier);
     if (network) qs.set('network_type', network);
-    qs.set('limit', 200); // You can adjust this limit
+    qs.set('limit', 200);
 
-    setStatus('loading', 'Loading...');
+    setStatus('loading', 'Loading…');
+
     try {
         const res = await fetch('/api/samples?' + qs.toString());
-        if (!res.ok) {
-            console.error('Failed to fetch samples:', res.statusText);
-            setStatus('disconnected', 'Error');
-            return;
-        }
+        if (!res.ok) throw new Error(res.statusText);
+
         const data = await res.json();
-        
-        const points = data.map(s => {
-            let weight;
-            if (heatmapType === 'dbm') {
-                // *** FIX: Use signal_strength ***
-                weight = dbmToWeight(s.signal_strength);
-            } else { // 'download'
-                // *** FIX: Use download_speed ***
-                weight = speedToWeight(s.download_speed);
-            }
-            // *** FIX: Use lat and lng ***
-            return [s.lat, s.lng, weight];
-        });
-        
+
+        const points = data
+            .map(s => {
+                if (!s.lat || !s.lng) return null;
+
+                const weight =
+                    heatmapType === 'dbm'
+                        ? dbmToWeight(s.signal_strength)
+                        : speedToWeight(s.download_speed);
+
+                return [s.lat, s.lng, weight];
+            })
+            .filter(Boolean);
+
         heatLayer.setLatLngs(points);
         setStatus('live', 'Live');
-    } catch (error) {
-        console.error('Error fetching samples:', error);
+    } catch (err) {
+        console.error(err);
         setStatus('disconnected', 'Offline');
     }
 }
 
-// Add event listeners to controls
-carrierSelect.addEventListener('change', fetchSamples);
-networkSelect.addEventListener('change', fetchSamples);
-heatmapDataSelect.addEventListener('change', fetchSamples);
-
+// ---------------- NORMALIZATION ----------------
 function dbmToWeight(dbm) {
-    if (dbm === null || dbm === undefined) return 0.2; // Show null values faintly
-    // clamp and normalize (-120 -> 0, -50 -> 1)
+    if (typeof dbm !== 'number') return 0.15;
     const clamped = Math.max(-120, Math.min(-50, dbm));
     return (clamped + 120) / 70;
 }
 
 function speedToWeight(mbps) {
-    if (mbps === null || mbps === undefined) return 0.0;
-    // clamp and normalize (0Mbps -> 0, 100+Mbps -> 1)
+    if (typeof mbps !== 'number') return 0;
     const clamped = Math.max(0, Math.min(100, mbps));
     return clamped / 100;
 }
 
-// --- Live updates via socket.io ---
+// ---------------- EVENTS ----------------
+carrierSelect.addEventListener('change', fetchSamples);
+networkSelect.addEventListener('change', fetchSamples);
+heatmapDataSelect.addEventListener('change', fetchSamples);
+
+// ---------------- SOCKET.IO ----------------
 const socket = io();
 
 socket.on('connect', () => {
     console.log('socket connected');
-    setStatus('live', 'Live');
 });
 
 socket.on('disconnect', () => {
-    console.log('socket disconnected');
     setStatus('disconnected', 'Offline');
 });
 
-function addSampleToMap(s) {
-    const heatmapType = heatmapDataSelect.value;
-    let weight;
-    if (heatmapType === 'dbm') {
-        // *** FIX: Use signal_strength ***
-        weight = dbmToWeight(s.signal_strength);
-    } else { // 'download'
-        // *** FIX: Use download_speed ***
-        weight = speedToWeight(s.download_speed);
-    }
-    // *** FIX: Use lat and lng ***
-    heatLayer.addLatLng([s.lat, s.lng, weight]);
-}
-
-// *** FIX: Listen for 'new_data_point' not 'new_sample' ***
 socket.on('new_data_point', (s) => {
-    console.log('Got new data point', s);
-    
-    // Check if the new point matches the current filters
-    const currentCarrier = carrierSelect.value;
-    const currentNetwork = networkSelect.value;
-
-    const carrierMatch = !currentCarrier || (s.carrier === currentCarrier);
-    const networkMatch = !currentNetwork || (s.network_type === currentNetwork);
+    const carrierMatch = !carrierSelect.value || s.carrier === carrierSelect.value;
+    const networkMatch = !networkSelect.value || s.network_type === networkSelect.value;
 
     if (carrierMatch && networkMatch) {
-        addSampleToMap(s);
+        const weight =
+            heatmapDataSelect.value === 'dbm'
+                ? dbmToWeight(s.signal_strength)
+                : speedToWeight(s.download_speed);
+
+        if (s.lat && s.lng) {
+            heatLayer.addLatLng([s.lat, s.lng, weight]);
+        }
     }
 });
 
-// initial fetch
+// ---------------- GEOLOCATION ----------------
+const locateBtn = document.getElementById('locate-btn');
+let userMarker = null;
+
+if (locateBtn) {
+    locateBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation not supported");
+            return;
+        }
+
+        const original = locateBtn.innerHTML;
+        locateBtn.innerHTML = "⌛ Locating…";
+        locateBtn.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+            ({ coords }) => {
+                if (userMarker) map.removeLayer(userMarker);
+
+                userMarker = L.marker([coords.latitude, coords.longitude])
+                    .addTo(map)
+                    .bindPopup("📍 You are here")
+                    .openPopup();
+
+                map.setView([coords.latitude, coords.longitude], 18);
+
+                locateBtn.innerHTML = "📍 Found you";
+                locateBtn.disabled = false;
+
+                setTimeout(() => {
+                    locateBtn.innerHTML = original;
+                }, 3000);
+            },
+            () => {
+                alert("Location access denied");
+                locateBtn.innerHTML = original;
+                locateBtn.disabled = false;
+            },
+            { enableHighAccuracy: true }
+        );
+    });
+}
+
+// Initial load
 fetchSamples();
