@@ -2,16 +2,24 @@ import os
 from sqlalchemy import create_engine, text
 
 # Get the database URL from the environment variable
-# Example: "postgresql://user:password@hostname/dbname"
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if not DATABASE_URL:
     raise ValueError("No DATABASE_URL environment variable set")
 
-# Create the table schema
-# Note: Using 'TEXT' for carrier and network_type is more flexible.
-# Using 'REAL' for numeric types is standard.
-CREATE_TABLE_QUERY = """
+# --- NEW: Query to create a users table ---
+CREATE_USERS_TABLE_QUERY = """
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    hashed_password TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+# --- MODIFIED: Query to add user_id to signal_data ---
+CREATE_SIGNAL_TABLE_QUERY = """
 CREATE TABLE IF NOT EXISTS signal_data (
     id SERIAL PRIMARY KEY,
     lat REAL NOT NULL,
@@ -20,22 +28,25 @@ CREATE TABLE IF NOT EXISTS signal_data (
     network_type TEXT NOT NULL,
     signal_strength REAL, 
     download_speed REAL,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- This links submissions to a user, but allows anonymous (NULL) submissions
+    user_id INTEGER REFERENCES users(id) DEFAULT NULL 
 );
 """
 
 def initialize_database():
     try:
-        # Create a database engine
         engine = create_engine(DATABASE_URL)
         
-        # Connect and execute the table creation query
         with engine.connect() as connection:
-            connection.execute(text(CREATE_TABLE_QUERY))
-            connection.commit() # Commit the transaction
+            # --- Run BOTH queries ---
+            connection.execute(text(CREATE_USERS_TABLE_QUERY))
+            connection.execute(text(CREATE_SIGNAL_TABLE_QUERY))
+            connection.commit() 
             
         print("Database connection successful.")
-        print("Table 'signal_data' is ready.")
+        print("Tables 'users' and 'signal_data' are ready.")
 
     except Exception as e:
         print(f"Error connecting to database or initializing table: {e}")
