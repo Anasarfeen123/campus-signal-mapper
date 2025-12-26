@@ -221,9 +221,14 @@ def get_carrier():
 # FRONTEND ROUTES
 # -------------------------------------------------
 
-@app.route('/')
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return {
+        "status": "ok",
+        "service": "vitc-signal-mapper",
+        "frontend": "https://vit-signal-map-frontend.vercel.app"
+    }
+
 
 @app.route('/upload')
 def upload():

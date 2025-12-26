@@ -3,5 +3,6 @@
     { "src": "/static/(.*)", "dest": "/static/$1" },
     { "src": "/upload", "dest": "/upload.html" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  ],
+  "outputDirectory": "."
 }
