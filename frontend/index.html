@@ -25,13 +25,11 @@
 html,body {
   height:100%;
   margin:0;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   background:var(--bg);
 }
 
-#map {
-  height:100%;
-}
+#map { height:100%; }
 
 /* Dim map when outside campus */
 .map-dim {
@@ -249,15 +247,19 @@ button {
   </select>
 
   <button id="locate-btn" class="btn-primary">
-    📍 Show My Location
+    <span>📍 Show My Location</span>
   </button>
 </div>
 
 <div id="toast" class="toast"></div>
 
+<!-- SCRIPTS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+
+<!-- IMPORTANT:
+     main.js must be at /static/main.js for Vercel -->
 <script src="/static/main.js"></script>
 
 </body>
