@@ -1,7 +1,7 @@
 // ================== CONFIG ==================
 const API_BASE = "https://vitc-signal-mapper.onrender.com";
 
-// ================== CAMPUS POLYGON (MUST MATCH BACKEND) ==================
+// ================== CAMPUS POLYGON ==================
 const VIT_POLYGON_COORDS = [
     [12.8455, 80.1532],
     [12.8447, 80.1587],
@@ -16,15 +16,11 @@ const VIT_POLYGON_COORDS = [
 const VIT_POLYGON = L.polygon(VIT_POLYGON_COORDS, {
     color: "#2563eb",
     weight: 2,
-    opacity: 0.9,
-    fillColor: "#2563eb",
     fillOpacity: 0.08,
     dashArray: "6 4",
-    interactive: false,
-    className: "campus-boundary"
+    interactive: false
 });
 
-const CAMPUS_POLYGON_POINTS = VIT_POLYGON.getLatLngs()[0];
 const VIT_BOUNDS = VIT_POLYGON.getBounds();
 
 // ================== MAP ==================
@@ -35,22 +31,16 @@ const map = L.map("map", {
     maxZoom: 19
 }).setView([12.8406, 80.1534], 17);
 
-map.on("drag", () => {
-    map.panInsideBounds(VIT_BOUNDS, { animate: false });
-});
-
 VIT_POLYGON.addTo(map);
 
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "© OpenStreetMap"
+    maxZoom: 19
 }).addTo(map);
 
 // ================== HEATMAP ==================
 const heatLayer = L.heatLayer([], {
     radius: 15,
-    blur: 10,
-    maxZoom: 17
+    blur: 10
 }).addTo(map);
 
 // ================== DOM ==================
@@ -62,7 +52,6 @@ const statusText = document.getElementById("status-text");
 const locateBtn = document.getElementById("locate-btn");
 const offlineIndicator = document.getElementById("offline-indicator");
 const toast = document.getElementById("toast");
-let locationWatcherId = null;
 
 // ================== UI HELPERS ==================
 function setStatus(state, text) {
@@ -74,36 +63,7 @@ function setStatus(state, text) {
 function showToast(msg, type = "info") {
     toast.textContent = msg;
     toast.className = `toast show ${type}`;
-    setTimeout(() => toast.classList.remove("show"), 2500);
-}
-
-function setOutsideCampusUI(isOutside) {
-    document.getElementById("map").classList.toggle("map-dim", isOutside);
-}
-
-// ================== GEO ==================
-function pointInPolygon(point, polygon) {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        const xi = polygon[i].lng, yi = polygon[i].lat;
-        const xj = polygon[j].lng, yj = polygon[j].lat;
-        const intersect =
-            (yi > point.lat) !== (yj > point.lat) &&
-            point.lng < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi;
-        if (intersect) inside = !inside;
-    }
-    return inside;
-}
-
-// ================== NORMALIZATION ==================
-function dbmToWeight(dbm) {
-    if (typeof dbm !== "number") return 0.15;
-    return (Math.max(-120, Math.min(-50, dbm)) + 120) / 70;
-}
-
-function speedToWeight(mbps) {
-    if (typeof mbps !== "number") return 0;
-    return Math.min(100, Math.max(0, mbps)) / 100;
+    setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
 // ================== DATA ==================
@@ -111,30 +71,22 @@ async function fetchSamples() {
     const qs = new URLSearchParams();
     if (carrierSelect.value) qs.set("carrier", carrierSelect.value);
     if (networkSelect.value) qs.set("network_type", networkSelect.value);
-    qs.set("limit", "200");
-
-    setStatus("loading", "Loading…");
 
     try {
-        const res = await fetch(`${API_BASE}/api/samples?${qs.toString()}`);
-        if (!res.ok) throw new Error();
-
+        setStatus("loading", "Loading…");
+        const res = await fetch(`${API_BASE}/api/samples?${qs}`);
         const data = await res.json();
 
         const points = data
+            .filter(s => s.lat && s.lng)
             .map(s => {
-                if (!s.lat || !s.lng) return null;
-                const latlng = L.latLng(s.lat, s.lng);
-                if (!pointInPolygon(latlng, CAMPUS_POLYGON_POINTS)) return null;
-
                 const weight =
                     heatmapDataSelect.value === "dbm"
-                        ? dbmToWeight(s.signal_strength)
-                        : speedToWeight(s.download_speed);
+                        ? (Math.max(-120, Math.min(-50, s.signal_strength)) + 120) / 70
+                        : Math.min(100, s.download_speed || 0) / 100;
 
                 return [s.lat, s.lng, weight];
-            })
-            .filter(Boolean);
+            });
 
         heatLayer.setLatLngs(points);
         setStatus("live", "Live");
@@ -143,7 +95,6 @@ async function fetchSamples() {
     }
 }
 
-// ================== EVENTS ==================
 carrierSelect.addEventListener("change", fetchSamples);
 networkSelect.addEventListener("change", fetchSamples);
 heatmapDataSelect.addEventListener("change", fetchSamples);
@@ -156,22 +107,13 @@ socket.on("disconnect", () => setStatus("disconnected", "Offline"));
 
 socket.on("new_data_point", s => {
     if (!s?.lat || !s?.lng) return;
-    if (carrierSelect.value && s.carrier !== carrierSelect.value) return;
-    if (networkSelect.value && s.network_type !== networkSelect.value) return;
-
-    const latlng = L.latLng(s.lat, s.lng);
-    if (!pointInPolygon(latlng, CAMPUS_POLYGON_POINTS)) return;
-
-    const weight =
-        heatmapDataSelect.value === "dbm"
-            ? dbmToWeight(s.signal_strength)
-            : speedToWeight(s.download_speed);
-
-    heatLayer.addLatLng([s.lat, s.lng, weight]);
+    heatLayer.addLatLng([s.lat, s.lng, 0.5]);
 });
 
-// ================== LOCATION ==================
+// ================== LOCATION (BULLETPROOF) ==================
 let userMarker = null;
+let accuracyCircle = null;
+let watcherId = null;
 
 locateBtn.addEventListener("click", () => {
     if (!navigator.geolocation) {
@@ -182,53 +124,55 @@ locateBtn.addEventListener("click", () => {
     locateBtn.disabled = true;
     locateBtn.textContent = "⌛ Locating…";
 
-    // Stop previous watcher if it exists
-    if (locationWatcherId !== null) {
-        navigator.geolocation.clearWatch(locationWatcherId);
+    if (watcherId !== null) {
+        navigator.geolocation.clearWatch(watcherId);
     }
 
-    locationWatcherId = navigator.geolocation.watchPosition(
-        ({ coords }) => {
-            const latlng = L.latLng(coords.latitude, coords.longitude);
+    watcherId = navigator.geolocation.watchPosition(
+        pos => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            console.log("GEO:", latitude, longitude, "accuracy:", accuracy);
 
-            showToast(`Accuracy ±${Math.round(coords.accuracy)}m`);
+            const latlng = L.latLng(latitude, longitude);
 
-            if (!VIT_BOUNDS.contains(latlng)) {
-                setStatus("disconnected", "Outside campus");
-                setOutsideCampusUI(true);
-                heatLayer.setLatLngs([]);
-                locateBtnReset();
-                return;
-            }
-
-            setOutsideCampusUI(false);
-            setStatus("live", "Inside campus");
-
+            // ALWAYS show marker (no silent rejection)
             if (userMarker) map.removeLayer(userMarker);
+            if (accuracyCircle) map.removeLayer(accuracyCircle);
+
             userMarker = L.marker(latlng)
                 .addTo(map)
-                .bindPopup("📍 Inside campus")
+                .bindPopup(`📍 You<br>±${Math.round(accuracy)}m`)
                 .openPopup();
 
-            map.setView(latlng, Math.max(map.getZoom(), 18));
-            locateBtnReset();
+            accuracyCircle = L.circle(latlng, {
+                radius: accuracy,
+                color: "#2563eb",
+                fillOpacity: 0.15
+            }).addTo(map);
+
+            map.setView(latlng, 18);
+            setStatus("live", "Location found");
+            showToast(`Accuracy ±${Math.round(accuracy)}m`);
+
+            locateBtn.disabled = false;
+            locateBtn.textContent = "📍 Show My Location";
+
+            navigator.geolocation.clearWatch(watcherId);
+            watcherId = null;
         },
-        () => {
-            locateBtnReset();
+        err => {
+            console.error("GEO ERROR:", err);
+            showToast(err.message, "error");
+            locateBtn.disabled = false;
+            locateBtn.textContent = "📍 Show My Location";
         },
         {
             enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 15000
+            timeout: 20000,
+            maximumAge: 0
         }
     );
 });
-
-
-function locateBtnReset() {
-    locateBtn.textContent = "📍 Show My Location";
-    locateBtn.disabled = false;
-}
 
 // ================== OFFLINE ==================
 function updateOfflineUI() {
