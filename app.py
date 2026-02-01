@@ -9,7 +9,6 @@ from flask_socketio import SocketIO, emit
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine, text
-db_initialized = False
 
 
 # -------------------------------------------------
@@ -25,17 +24,20 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL not set")
 
-# Render's managed Postgres can drop idle SSL connections.
-# pool_pre_ping issues a lightweight SELECT 1 before handing out a
-# connection, so dead sockets are discarded silently.  We keep
-# NullPool (no persistent pool) because the free tier has very few
-# allowed connections, but the pre-ping still fires on the fresh
-# connection attempt and gives us an automatic retry path.
+# Render's managed Postgres uses an internal CA that isn't in the
+# container's system trust store.  psycopg2/libpq with sslmode=require
+# still tries to verify the server cert against the system CA bundle
+# and fails with "SSL connection has been closed unexpectedly".
+# Setting sslrootcert to an empty string disables CA verification.
+# This is safe on Render because the connection stays on an internal
+# encrypted network regardless.
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"sslmode": "require"},
+    connect_args={
+        "sslmode": "require",
+        "sslrootcert": "",
+    },
     poolclass=NullPool,
-    pool_pre_ping=True,
 )
 
 # -------------------------------------------------
@@ -58,29 +60,23 @@ def ensure_tables_exist():
     );
     """
 
-    last_exc = None
-    for attempt in range(3):          # up to 3 attempts
+    for attempt in range(1, 4):          # up to 3 attempts
         try:
             with engine.begin() as conn:
                 conn.execute(text(CREATE_SQL))
-            return                     # success – stop retrying
+            print("DB tables verified OK")
+            return                        # success
         except Exception as e:
-            last_exc = e
-            print(f"DB init attempt {attempt + 1} failed: {e}")
-            time.sleep(1 * (attempt + 1))   # 1 s, 2 s back-off
+            print(f"DB init attempt {attempt} failed: {e}")
+            if attempt < 3:
+                time.sleep(2 * attempt)   # 2 s, 4 s back-off
+    # All retries exhausted – let the process crash so Render restarts it
+    raise RuntimeError("Could not initialise database after 3 attempts")
 
-    # All retries exhausted – re-raise so the caller knows
-    raise last_exc
-
-@app.before_request
-def init_db_once():
-    global db_initialized
-    if not db_initialized:
-        try:
-            ensure_tables_exist()
-            db_initialized = True
-        except Exception as e:
-            print("DB init failed, retrying next request:", e)
+# Run once at import time (worker startup), before any requests arrive.
+# This is synchronous and blocking, which is fine — gunicorn won't
+# register the worker as ready until this finishes.
+ensure_tables_exist()
 
 
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -181,7 +177,7 @@ def submit_data():
         )
     """
 
-    with engine.begin() as conn:   # auto-commits on block exit
+    with engine.begin() as conn:
         conn.execute(text(sql), payload)
 
     socketio.emit("new_data_point", payload)
