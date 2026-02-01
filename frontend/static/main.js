@@ -191,7 +191,7 @@ locateBtn.addEventListener("click", () => {
                 return;
             }
 
-            if (!pointInPolygon(latlng, CAMPUS_POLYGON_POINTS)) {
+            if (!VIT_BOUNDS.contains(latlng)) {
                 setStatus("disconnected", "Outside campus");
                 setOutsideCampusUI(true);
                 heatLayer.setLatLngs([]);
