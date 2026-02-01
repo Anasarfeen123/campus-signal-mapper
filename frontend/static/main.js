@@ -110,10 +110,10 @@ socket.on("new_data_point", s => {
     heatLayer.addLatLng([s.lat, s.lng, 0.5]);
 });
 
-// ================== LOCATION (BULLETPROOF) ==================
+// ================== LOCATION (LOCKED ONCE) ==================
 let userMarker = null;
 let accuracyCircle = null;
-let watcherId = null;
+let isLocationLocked = false;
 
 locateBtn.addEventListener("click", () => {
     if (!navigator.geolocation) {
@@ -121,27 +121,30 @@ locateBtn.addEventListener("click", () => {
         return;
     }
 
+    // reset lock if user clicks again
+    isLocationLocked = false;
+
     locateBtn.disabled = true;
     locateBtn.textContent = "⌛ Locating…";
 
-    if (watcherId !== null) {
-        navigator.geolocation.clearWatch(watcherId);
-    }
-
-    watcherId = navigator.geolocation.watchPosition(
+    navigator.geolocation.getCurrentPosition(
         pos => {
-            const { latitude, longitude, accuracy } = pos.coords;
-            console.log("GEO:", latitude, longitude, "accuracy:", accuracy);
+            if (isLocationLocked) return;
 
+            const { latitude, longitude, accuracy } = pos.coords;
             const latlng = L.latLng(latitude, longitude);
 
-            // ALWAYS show marker (no silent rejection)
+            console.log("LOCKED LOCATION:", latitude, longitude, "±", accuracy);
+
+            // Lock immediately
+            isLocationLocked = true;
+
             if (userMarker) map.removeLayer(userMarker);
             if (accuracyCircle) map.removeLayer(accuracyCircle);
 
             userMarker = L.marker(latlng)
                 .addTo(map)
-                .bindPopup(`📍 You<br>±${Math.round(accuracy)}m`)
+                .bindPopup(`📍 Locked location<br>±${Math.round(accuracy)}m`)
                 .openPopup();
 
             accuracyCircle = L.circle(latlng, {
@@ -151,14 +154,12 @@ locateBtn.addEventListener("click", () => {
             }).addTo(map);
 
             map.setView(latlng, 18);
-            setStatus("live", "Location found");
-            showToast(`Accuracy ±${Math.round(accuracy)}m`);
+
+            setStatus("live", "Location locked");
+            showToast("Location locked");
 
             locateBtn.disabled = false;
             locateBtn.textContent = "📍 Show My Location";
-
-            navigator.geolocation.clearWatch(watcherId);
-            watcherId = null;
         },
         err => {
             console.error("GEO ERROR:", err);
