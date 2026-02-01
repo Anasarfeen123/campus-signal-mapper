@@ -33,12 +33,10 @@ if not DATABASE_URL:
 # encrypted network regardless.
 engine = create_engine(
     DATABASE_URL,
-    connect_args={
-        "sslmode": "require",
-        "sslrootcert": "",
-    },
     poolclass=NullPool,
 )
+
+
 
 # -------------------------------------------------
 # AUTO DB INIT (FREE TIER SAFE)
