@@ -24,19 +24,28 @@ app.config['SECRET_KEY'] = os.environ.get(
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL not set")
+
+# Render's managed Postgres can drop idle SSL connections.
+# pool_pre_ping issues a lightweight SELECT 1 before handing out a
+# connection, so dead sockets are discarded silently.  We keep
+# NullPool (no persistent pool) because the free tier has very few
+# allowed connections, but the pre-ping still fires on the fresh
+# connection attempt and gives us an automatic retry path.
 engine = create_engine(
     DATABASE_URL,
     connect_args={"sslmode": "require"},
-    poolclass=NullPool
+    poolclass=NullPool,
+    pool_pre_ping=True,
 )
-
 
 # -------------------------------------------------
 # AUTO DB INIT (FREE TIER SAFE)
 # -------------------------------------------------
 
 def ensure_tables_exist():
-    sql = """
+    import time
+
+    CREATE_SQL = """
     CREATE TABLE IF NOT EXISTS signal_data (
         id SERIAL PRIMARY KEY,
         lat DOUBLE PRECISION NOT NULL,
@@ -48,8 +57,20 @@ def ensure_tables_exist():
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
     """
-    with engine.begin() as conn:
-        conn.execute(text(sql))
+
+    last_exc = None
+    for attempt in range(3):          # up to 3 attempts
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(CREATE_SQL))
+            return                     # success – stop retrying
+        except Exception as e:
+            last_exc = e
+            print(f"DB init attempt {attempt + 1} failed: {e}")
+            time.sleep(1 * (attempt + 1))   # 1 s, 2 s back-off
+
+    # All retries exhausted – re-raise so the caller knows
+    raise last_exc
 
 @app.before_request
 def init_db_once():
@@ -160,7 +181,7 @@ def submit_data():
         )
     """
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:   # auto-commits on block exit
         conn.execute(text(sql), payload)
 
     socketio.emit("new_data_point", payload)
