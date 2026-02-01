@@ -111,7 +111,6 @@ def get_samples():
 # -------------------------------------------------
 # SUBMIT DATA (OFFLINE SAFE)
 # -------------------------------------------------
-
 @app.route('/api/submit', methods=['POST'])
 @limiter.limit("5 per second")
 def submit_data():
@@ -119,37 +118,17 @@ def submit_data():
     if not data:
         return jsonify({"error": "Invalid JSON"}), 400
 
-    # --- Required fields ---
     try:
-        lat = float(data.get("lat"))
-        lng = float(data.get("lng"))
-        client_id = data.get("client_id")
-        created_at = int(data.get("created_at"))
-    except (TypeError, ValueError):
-        return jsonify({"error": "Invalid coordinates or metadata"}), 400
-
-    if not client_id:
-        return jsonify({"error": "Missing client_id"}), 400
+        lat = float(data["lat"])
+        lng = float(data["lng"])
+    except (KeyError, ValueError, TypeError):
+        return jsonify({"error": "Invalid coordinates"}), 400
 
     if not is_within_bounds(lat, lng):
         return jsonify({
             "error": "OUT_OF_CAMPUS",
             "message": "You are outside the VIT Chennai campus"
         }), 403
-
-    sql = """
-        INSERT INTO signal_data (
-            lat, lng, carrier, network_type,
-            signal_strength, download_speed,
-            client_id, created_at
-        )
-        VALUES (
-            :lat, :lng, :carrier, :network_type,
-            :signal_strength, :download_speed,
-            :client_id, :created_at
-        )
-        ON CONFLICT (client_id) DO NOTHING
-    """
 
     payload = {
         "lat": lat,
@@ -158,58 +137,25 @@ def submit_data():
         "network_type": data.get("network_type"),
         "signal_strength": data.get("signal_strength"),
         "download_speed": data.get("download_speed"),
-        "client_id": client_id,
-        "created_at": created_at
     }
 
+    sql = """
+        INSERT INTO signal_data (
+            lat, lng, carrier, network_type,
+            signal_strength, download_speed
+        )
+        VALUES (
+            :lat, :lng, :carrier, :network_type,
+            :signal_strength, :download_speed
+        )
+    """
+
     with engine.connect() as conn:
-        result = conn.execute(text(sql), payload)
+        conn.execute(text(sql), payload)
 
-    # Emit only if inserted (rowcount = 1)
-    if result.rowcount == 1:
-        socketio.emit("new_data_point", payload)
-
+    socketio.emit("new_data_point", payload)
     return jsonify({"success": True}), 201
 
-# -------------------------------------------------
-# OPTIONAL: BATCH SUBMIT (FOR FUTURE OFFLINE SYNC)
-# -------------------------------------------------
-
-@app.route('/api/submit/batch', methods=['POST'])
-def submit_batch():
-    samples = request.json
-    if not isinstance(samples, list):
-        return jsonify({"error": "Expected list"}), 400
-
-    inserted = 0
-
-    with engine.connect() as conn:
-        for s in samples:
-            try:
-                lat = float(s["lat"])
-                lng = float(s["lng"])
-                if not is_within_bounds(lat, lng):
-                    continue
-
-                conn.execute(text("""
-                    INSERT INTO signal_data (
-                        lat, lng, carrier, network_type,
-                        signal_strength, download_speed,
-                        client_id, created_at
-                    )
-                    VALUES (
-                        :lat, :lng, :carrier, :network_type,
-                        :signal_strength, :download_speed,
-                        :client_id, :created_at
-                    )
-                    ON CONFLICT (client_id) DO NOTHING
-                """), s)
-
-                inserted += 1
-            except Exception:
-                continue
-
-    return jsonify({"inserted": inserted}), 201
 
 # -------------------------------------------------
 # CARRIER DETECTION
