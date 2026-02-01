@@ -62,6 +62,7 @@ const statusText = document.getElementById("status-text");
 const locateBtn = document.getElementById("locate-btn");
 const offlineIndicator = document.getElementById("offline-indicator");
 const toast = document.getElementById("toast");
+let locationWatcherId = null;
 
 // ================== UI HELPERS ==================
 function setStatus(state, text) {
@@ -181,21 +182,21 @@ locateBtn.addEventListener("click", () => {
     locateBtn.disabled = true;
     locateBtn.textContent = "⌛ Locating…";
 
-    navigator.geolocation.getCurrentPosition(
+    // Stop previous watcher if it exists
+    if (locationWatcherId !== null) {
+        navigator.geolocation.clearWatch(locationWatcherId);
+    }
+
+    locationWatcherId = navigator.geolocation.watchPosition(
         ({ coords }) => {
             const latlng = L.latLng(coords.latitude, coords.longitude);
 
-            if (coords.accuracy > 50) {
-                showToast("GPS accuracy too low", "error");
-                locateBtnReset();
-                return;
-            }
+            showToast(`Accuracy ±${Math.round(coords.accuracy)}m`);
 
             if (!VIT_BOUNDS.contains(latlng)) {
                 setStatus("disconnected", "Outside campus");
                 setOutsideCampusUI(true);
                 heatLayer.setLatLngs([]);
-                showToast("Outside VIT Chennai campus", "error");
                 locateBtnReset();
                 return;
             }
@@ -204,15 +205,25 @@ locateBtn.addEventListener("click", () => {
             setStatus("live", "Inside campus");
 
             if (userMarker) map.removeLayer(userMarker);
-            userMarker = L.marker(latlng).addTo(map).bindPopup("📍 Inside campus").openPopup();
+            userMarker = L.marker(latlng)
+                .addTo(map)
+                .bindPopup("📍 Inside campus")
+                .openPopup();
 
             map.setView(latlng, Math.max(map.getZoom(), 18));
             locateBtnReset();
         },
-        locateBtnReset,
-        { enableHighAccuracy: true, timeout: 10000 }
+        () => {
+            locateBtnReset();
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 15000
+        }
     );
 });
+
 
 function locateBtnReset() {
     locateBtn.textContent = "📍 Show My Location";
