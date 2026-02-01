@@ -25,8 +25,8 @@ if not DATABASE_URL:
 
 engine = create_engine(
     DATABASE_URL,
-    isolation_level="AUTOCOMMIT",
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    connect_args={"sslmode": "require"}
 )
 
 # -------------------------------------------------
@@ -50,7 +50,10 @@ def ensure_tables_exist():
         conn.execute(text(sql))
         conn.commit()
 
-ensure_tables_exist()
+@app.before_first_request
+def init_db():
+    ensure_tables_exist()
+
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
