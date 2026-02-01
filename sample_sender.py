@@ -3,8 +3,7 @@ import time
 import random
 
 # --- CONFIGURATION ---
-
-# Toggle this to False when you are ready to send to the live server
+# False -> send to the live server
 USE_LOCALHOST = False
 
 if USE_LOCALHOST:
@@ -12,11 +11,9 @@ if USE_LOCALHOST:
 else:
     URL = 'https://vitc-signal-mapper.onrender.com/api/submit'
 
-# Total number of samples to send
 TOTAL_SAMPLES = 100
 
-# --- GEOFENCE CONSTANTS (Must match app.py) ---
-# We use these exact bounds to ensure the server accepts our data
+# --- GEOFENCE CONSTANTS---
 VIT_BOUNDS = {
     "min_lat": 12.839,
     "max_lat": 12.844,
@@ -25,7 +22,7 @@ VIT_BOUNDS = {
 }
 
 CARRIERS = ['Airtel', 'Jio', 'VI', 'BSNL']
-NETWORK_TYPES = ['4G', '5G'] # Removed 3G as it's rare now, but you can add it back
+NETWORK_TYPES = ['4G', '5G']
 
 def generate_safe_coordinate():
     """Generates a random coordinate strictly within campus bounds."""

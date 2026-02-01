@@ -8,171 +8,182 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
+/* ================= THEME ================= */
 :root {
-  --primary:#2563eb;
-  --primary-hover:#1d4ed8;
-  --bg:#f4f7f6;
-  --card:rgba(255,255,255,.88);
+  --blue:#2563eb;
+  --purple:#7c3aed;
+  --green:#22c55e;
+  --red:#ef4444;
+  --bg:#f1f5f9;
+  --glass:rgba(255,255,255,.82);
   --text:#0f172a;
   --muted:#64748b;
-  --border:#e2e8f0;
-  --radius:14px;
-  --shadow:0 10px 25px rgba(0,0,0,.12);
-  --offline-bg:#fff1f2;
-  --offline-text:#b91c1c;
+  --radius:16px;
+  --shadow:0 25px 50px rgba(0,0,0,.18);
 }
 
+/* ================= BASE ================= */
 html,body {
   height:100%;
   margin:0;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-  background:var(--bg);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto;
+  background:radial-gradient(circle at top, #e0f2fe, #f8fafc 60%);
+  color:var(--text);
 }
 
 #map { height:100%; }
 
-/* Dim map when outside campus */
+/* Dim when outside campus */
 .map-dim {
-  filter: grayscale(.8) brightness(.75);
-  transition: filter .35s ease;
+  filter: grayscale(.85) brightness(.7);
+  transition:.4s ease;
 }
 
-/* ---------- CONTROL PANEL ---------- */
+/* ================= PANEL ================= */
 .controls {
   position:absolute;
-  top:16px;
-  left:16px;
-  width:300px;
+  top:18px;
+  left:18px;
+  width:320px;
   padding:18px;
-  background:linear-gradient(
-    180deg,
-    rgba(255,255,255,.95),
-    rgba(255,255,255,.85)
-  );
-  backdrop-filter:blur(14px);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.75));
+  backdrop-filter: blur(16px);
   border-radius:var(--radius);
   box-shadow:var(--shadow);
-  border:1px solid rgba(255,255,255,.45);
+  border:1px solid rgba(255,255,255,.4);
   z-index:1000;
+  animation: floatIn .6s ease;
 }
 
+@keyframes floatIn {
+  from { opacity:0; transform:translateY(12px); }
+  to { opacity:1; transform:none; }
+}
+
+/* ================= HEADER ================= */
 .header {
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:10px;
+  margin-bottom:14px;
 }
 
 .header h1 {
-  font-size:1.1rem;
-  margin:0;
-  font-weight:700;
+  font-size:1.15rem;
+  font-weight:800;
+  letter-spacing:.2px;
+  background:linear-gradient(90deg, var(--blue), var(--purple));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
 }
 
-/* ---------- STATUS ---------- */
+/* ================= STATUS ================= */
 #status {
   display:flex;
   gap:6px;
-  font-size:.75rem;
-  color:var(--muted);
   align-items:center;
+  font-size:.72rem;
+  font-weight:600;
+  color:var(--muted);
 }
 
 #status-light {
-  width:8px;
-  height:8px;
+  width:9px;
+  height:9px;
   border-radius:50%;
   background:#94a3b8;
-  transition:.3s;
 }
 
 #status-light.live {
-  background:#22c55e;
-  box-shadow:0 0 10px rgba(34,197,94,.8);
-  animation: liveGlow 2.5s ease-in-out infinite;
+  background:var(--green);
+  box-shadow:0 0 14px rgba(34,197,94,.9);
+  animation:pulse 2.2s infinite;
 }
 
 #status-light.loading {
-  background:#eab308;
+  background:#facc15;
   animation:pulse 1.2s infinite;
 }
 
 #status-light.disconnected {
-  background:#ef4444;
+  background:var(--red);
 }
 
 @keyframes pulse {
-  50% { opacity:.4 }
+  50% { opacity:.45 }
 }
 
-@keyframes liveGlow {
-  0%,100% { box-shadow:0 0 6px rgba(34,197,94,.4); }
-  50% { box-shadow:0 0 14px rgba(34,197,94,.9); }
-}
-
-/* ---------- OFFLINE ---------- */
+/* ================= OFFLINE ================= */
 .offline-banner {
   display:none;
-  margin-bottom:8px;
-  background:var(--offline-bg);
-  color:var(--offline-text);
-  border-radius:8px;
-  padding:6px;
+  margin-bottom:10px;
+  background:linear-gradient(90deg, #fee2e2, #fecaca);
+  color:#991b1b;
+  padding:8px;
+  border-radius:10px;
   font-size:.75rem;
-  font-weight:600;
+  font-weight:700;
   text-align:center;
 }
 
-/* ---------- FORM ---------- */
+/* ================= FORM ================= */
 label {
-  font-size:.75rem;
-  font-weight:600;
+  font-size:.7rem;
+  font-weight:700;
   color:var(--muted);
+  margin-top:6px;
+  display:block;
 }
 
 select {
   width:100%;
-  padding:8px;
-  border-radius:8px;
-  border:1px solid var(--border);
-  margin-bottom:10px;
-  background:#fff;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid rgba(0,0,0,.08);
+  margin-bottom:12px;
+  background:rgba(255,255,255,.9);
+  font-weight:600;
 }
 
+/* ================= BUTTON ================= */
 button {
   width:100%;
-  padding:10px;
+  padding:12px;
   border:none;
-  border-radius:8px;
-  font-weight:600;
+  border-radius:12px;
+  font-weight:800;
   cursor:pointer;
-  transition:.15s;
+  transition:.18s ease;
 }
 
 .btn-primary {
-  background:var(--primary);
+  background:linear-gradient(135deg, var(--blue), var(--purple));
   color:white;
+  box-shadow:0 10px 25px rgba(99,102,241,.35);
 }
 
 .btn-primary:hover {
-  background:var(--primary-hover);
+  transform:translateY(-1px);
+  box-shadow:0 14px 32px rgba(99,102,241,.45);
 }
 
-/* ---------- TOAST ---------- */
+/* ================= TOAST ================= */
 .toast {
   position:fixed;
-  bottom:26px;
+  bottom:28px;
   left:50%;
-  transform:translateX(-50%) translateY(20px);
+  transform:translateX(-50%) translateY(16px);
   background:#0f172a;
   color:white;
-  padding:10px 18px;
+  padding:12px 22px;
   border-radius:999px;
   font-size:.85rem;
+  font-weight:700;
   opacity:0;
   pointer-events:none;
-  transition:.25s;
-  box-shadow:0 10px 25px rgba(0,0,0,.35);
+  transition:.3s ease;
+  box-shadow:0 15px 35px rgba(0,0,0,.45);
 }
 
 .toast.show {
@@ -182,20 +193,19 @@ button {
 
 .toast.error { background:#991b1b; }
 .toast.success { background:#166534; }
-.toast.info { background:#0f172a; }
 
-/* ---------- CAMPUS POLYGON ---------- */
+/* ================= CAMPUS POLYGON ================= */
 .campus-boundary {
-  animation: campusPulse 4s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(37,99,235,.35));
+  animation: glow 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(37,99,235,.5));
 }
 
-@keyframes campusPulse {
-  0%,100% { opacity:.75; }
-  50% { opacity:1; }
+@keyframes glow {
+  0%,100% { opacity:.75 }
+  50% { opacity:1 }
 }
 
-/* ---------- MOBILE ---------- */
+/* ================= MOBILE ================= */
 @media (max-width:480px) {
   .controls {
     left:12px;
@@ -247,19 +257,17 @@ button {
   </select>
 
   <button id="locate-btn" class="btn-primary">
-    <span>📍 Show My Location</span>
+    📍 Show My Location
   </button>
 </div>
 
 <div id="toast" class="toast"></div>
 
-<!-- SCRIPTS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 
-<!-- IMPORTANT:
-     main.js must be at /static/main.js for Vercel -->
+<!-- main.js stays exactly the same -->
 <script src="/static/main.js"></script>
 
 </body>
