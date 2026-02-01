@@ -9,6 +9,26 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine, text
 
+
+# -------------------------------------------------
+# APP SETUP
+# -------------------------------------------------
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get(
+    'FLASK_SECRET_KEY', 'dev_secret_key'
+)
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL not set")
+
+engine = create_engine(
+    DATABASE_URL,
+    isolation_level="AUTOCOMMIT",
+    pool_pre_ping=True
+)
+
 # -------------------------------------------------
 # AUTO DB INIT (FREE TIER SAFE)
 # -------------------------------------------------
@@ -31,26 +51,6 @@ def ensure_tables_exist():
         conn.commit()
 
 ensure_tables_exist()
-
-
-# -------------------------------------------------
-# APP SETUP
-# -------------------------------------------------
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get(
-    'FLASK_SECRET_KEY', 'dev_secret_key'
-)
-
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL not set")
-
-engine = create_engine(
-    DATABASE_URL,
-    isolation_level="AUTOCOMMIT",
-    pool_pre_ping=True
-)
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
