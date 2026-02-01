@@ -10,6 +10,30 @@ from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine, text
 
 # -------------------------------------------------
+# AUTO DB INIT (FREE TIER SAFE)
+# -------------------------------------------------
+
+def ensure_tables_exist():
+    sql = """
+    CREATE TABLE IF NOT EXISTS signal_data (
+        id SERIAL PRIMARY KEY,
+        lat DOUBLE PRECISION NOT NULL,
+        lng DOUBLE PRECISION NOT NULL,
+        carrier TEXT NOT NULL,
+        network_type TEXT NOT NULL,
+        signal_strength REAL,
+        download_speed REAL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+    with engine.connect() as conn:
+        conn.execute(text(sql))
+        conn.commit()
+
+ensure_tables_exist()
+
+
+# -------------------------------------------------
 # APP SETUP
 # -------------------------------------------------
 
