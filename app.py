@@ -8,6 +8,7 @@ from flask_socketio import SocketIO, emit
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine, text
+db_initialized = False
 
 
 # -------------------------------------------------
@@ -46,13 +47,18 @@ def ensure_tables_exist():
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
     """
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text(sql))
-        conn.commit()
 
-@app.before_first_request
-def init_db():
-    ensure_tables_exist()
+@app.before_request
+def init_db_once():
+    global db_initialized
+    if not db_initialized:
+        try:
+            ensure_tables_exist()
+            db_initialized = True
+        except Exception as e:
+            print("DB init failed, retrying next request:", e)
 
 
 socketio = SocketIO(app, cors_allowed_origins="*")
