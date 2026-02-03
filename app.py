@@ -34,9 +34,11 @@ if not DATABASE_URL:
 engine = create_engine(
     DATABASE_URL,
     poolclass=NullPool,
+    connect_args={
+        "sslmode": "require",
+        "sslrootcert": ""
+    }
 )
-
-
 
 # -------------------------------------------------
 # AUTO DB INIT (FREE TIER SAFE)
