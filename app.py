@@ -4,14 +4,12 @@ from sqlalchemy.pool import NullPool
 
 import os
 import requests
-from flask import Flask, request, jsonify
+import time
+from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine, text
-from flask import render_template # Add this to your imports
-
-
 
 # -------------------------------------------------
 # APP SETUP
@@ -22,26 +20,30 @@ app.config['SECRET_KEY'] = os.environ.get(
     'FLASK_SECRET_KEY', 'dev_secret_key'
 )
 
+# Detect if running locally or on Render
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL not set")
+    raise RuntimeError("DATABASE_URL not set. Run '$env:DATABASE_URL = \"sqlite:///signals.db\"' for local testing.")
 
-# Render's managed Postgres uses an internal CA that isn't in the
-# container's system trust store.  psycopg2/libpq with sslmode=require
-# still tries to verify the server cert against the system CA bundle
-# and fails with "SSL connection has been closed unexpectedly".
-# Setting sslrootcert to an empty string disables CA verification.
-# This is safe on Render because the connection stays on an internal
-# encrypted network regardless.
+# Configure Engine based on DB type
+if "sqlite" in DATABASE_URL:
+    # Local SQLite Configuration
+    engine = create_engine(DATABASE_URL, poolclass=NullPool)
+else:
+    # Render PostgreSQL Configuration
+    engine = create_engine(
+        DATABASE_URL,
+        poolclass=NullPool,
+        connect_args={
+            "sslmode": "require"
+        }
+    )
 
-engine = create_engine(DATABASE_URL, poolclass=NullPool)
 # -------------------------------------------------
-# AUTO DB INIT (FREE TIER SAFE)
+# AUTO DB INIT
 # -------------------------------------------------
 
 def ensure_tables_exist():
-    import time
-
     CREATE_SQL = """
     CREATE TABLE IF NOT EXISTS signal_data (
         id SERIAL PRIMARY KEY,
@@ -54,28 +56,28 @@ def ensure_tables_exist():
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
     """
+    # Adjust SERIAL for SQLite compatibility if necessary
+    if "sqlite" in DATABASE_URL:
+        CREATE_SQL = CREATE_SQL.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
+        CREATE_SQL = CREATE_SQL.replace("TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP", "DATETIME DEFAULT CURRENT_TIMESTAMP")
 
-    for attempt in range(1, 4):          # up to 3 attempts
+    for attempt in range(1, 4):
         try:
             with engine.begin() as conn:
                 conn.execute(text(CREATE_SQL))
             print("DB tables verified OK")
-            return                        # success
+            return
         except Exception as e:
             print(f"DB init attempt {attempt} failed: {e}")
             if attempt < 3:
-                time.sleep(2 * attempt)   # 2 s, 4 s back-off
-    # All retries exhausted – let the process crash so Render restarts it
+                time.sleep(2 * attempt)
     raise RuntimeError("Could not initialise database after 3 attempts")
 
-# Run once at import time (worker startup), before any requests arrive.
-# This is synchronous and blocking, which is fine — gunicorn won't
-# register the worker as ready until this finishes.
 ensure_tables_exist()
-
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# Limiter can be disabled for local ESP32 testing if it causes issues
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -94,13 +96,28 @@ VIT_BOUNDS = {
 }
 
 def is_within_bounds(lat, lng):
+    # NOTE: You can return True here if testing ESP32 outside campus bounds
     return (
         VIT_BOUNDS["min_lat"] <= lat <= VIT_BOUNDS["max_lat"] and
         VIT_BOUNDS["min_lng"] <= lng <= VIT_BOUNDS["max_lng"]
     )
 
 # -------------------------------------------------
-# GET HEATMAP DATA
+# FRONTEND ROUTES
+# -------------------------------------------------
+
+@app.route("/", methods=["GET"])
+def index():
+    """Serves the main heatmap page."""
+    return render_template("index.html")
+
+@app.route("/upload", methods=["GET"])
+def upload_page():
+    """Serves the data contribution page."""
+    return render_template("upload.html")
+
+# -------------------------------------------------
+# API ENDPOINTS
 # -------------------------------------------------
 
 @app.route('/api/samples')
@@ -108,11 +125,7 @@ def get_samples():
     carrier = request.args.get('carrier')
     network = request.args.get('network_type')
 
-    sql = """
-        SELECT lat, lng, signal_strength, download_speed
-        FROM signal_data
-    """
-
+    sql = "SELECT lat, lng, signal_strength, download_speed FROM signal_data"
     filters = []
     params = {}
 
@@ -130,12 +143,10 @@ def get_samples():
         rows = conn.execute(text(sql), params)
         return jsonify([dict(r._mapping) for r in rows])
 
-# -------------------------------------------------
-# SUBMIT DATA (OFFLINE SAFE)
-# -------------------------------------------------
 @app.route('/api/submit', methods=['POST'])
 @limiter.limit("5 per second")
 def submit_data():
+    """Endpoint for web users and ESP32 nodes."""
     data = request.json
     if not data:
         return jsonify({"error": "Invalid JSON"}), 400
@@ -149,27 +160,21 @@ def submit_data():
     if not is_within_bounds(lat, lng):
         return jsonify({
             "error": "OUT_OF_CAMPUS",
-            "message": "You are outside the VIT Chennai campus"
+            "message": "Data point is outside campus bounds"
         }), 403
 
     payload = {
         "lat": lat,
         "lng": lng,
-        "carrier": data.get("carrier"),
-        "network_type": data.get("network_type"),
+        "carrier": data.get("carrier", "Unknown"),
+        "network_type": data.get("network_type", "Unknown"),
         "signal_strength": data.get("signal_strength"),
         "download_speed": data.get("download_speed"),
     }
 
     sql = """
-        INSERT INTO signal_data (
-            lat, lng, carrier, network_type,
-            signal_strength, download_speed
-        )
-        VALUES (
-            :lat, :lng, :carrier, :network_type,
-            :signal_strength, :download_speed
-        )
+        INSERT INTO signal_data (lat, lng, carrier, network_type, signal_strength, download_speed)
+        VALUES (:lat, :lng, :carrier, :network_type, :signal_strength, :download_speed)
     """
 
     with engine.begin() as conn:
@@ -178,55 +183,23 @@ def submit_data():
     socketio.emit("new_data_point", payload)
     return jsonify({"success": True}), 201
 
-
-# -------------------------------------------------
-# CARRIER DETECTION
-# -------------------------------------------------
-
 @app.route('/api/get-carrier')
 def get_carrier():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-
     if ip.startswith(('127.', '192.', '10.', '172.')):
         return jsonify({"carrier": "Unknown (Local IP)"})
 
     try:
         r = requests.get(f"https://ipinfo.io/{ip}/org", timeout=3)
         org = r.text.lower()
-
-        if "jio" in org:
-            carrier = "Jio"
-        elif "airtel" in org:
-            carrier = "Airtel"
-        elif "vodafone" in org or "idea" in org or "vi" in org:
-            carrier = "VI"
-        elif "bsnl" in org:
-            carrier = "BSNL"
-        else:
-            carrier = "Other"
-
+        if "jio" in org: carrier = "Jio"
+        elif "airtel" in org: carrier = "Airtel"
+        elif "vodafone" in org or "idea" in org or "vi" in org: carrier = "VI"
+        elif "bsnl" in org: carrier = "BSNL"
+        else: carrier = "Other"
         return jsonify({"carrier": carrier})
-    except requests.RequestException:
+    except:
         return jsonify({"error": "Carrier detection failed"}), 503
-
-# -------------------------------------------------
-# FRONTEND ROUTES
-# -------------------------------------------------
-
-@app.route("/", methods=["GET"])
-def health():
-    return {"status": "ok", "service": "vit-signal-mapper-api"}, 200
-
-
-
-@app.route("/upload", methods=["GET"])
-def upload_info():
-    return {
-        "message": "Upload handled via /api/submit",
-        "method": "POST",
-        "format": "JSON"
-    }, 200
-
 
 # -------------------------------------------------
 # SOCKET EVENTS
@@ -245,7 +218,6 @@ def on_disconnect():
 # -------------------------------------------------
 
 if __name__ == "__main__":
-    # Get port from environment variable for Render deployment
     port = int(os.environ.get("PORT", 5000))
     socketio.run(
         app,
