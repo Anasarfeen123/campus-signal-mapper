@@ -32,14 +32,7 @@ if not DATABASE_URL:
 # This is safe on Render because the connection stays on an internal
 # encrypted network regardless.
 
-engine = create_engine(
-    DATABASE_URL,
-    poolclass=NullPool,
-    connect_args={
-        "sslmode": "require",
-    }
-)
-
+engine = create_engine(DATABASE_URL, poolclass=NullPool)
 # -------------------------------------------------
 # AUTO DB INIT (FREE TIER SAFE)
 # -------------------------------------------------
