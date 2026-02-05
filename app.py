@@ -37,7 +37,6 @@ engine = create_engine(
     poolclass=NullPool,
     connect_args={
         "sslmode": "require",
-        "sslrootcert": "/dev/null"
     }
 )
 
