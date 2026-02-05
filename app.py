@@ -31,12 +31,14 @@ if not DATABASE_URL:
 # Setting sslrootcert to an empty string disables CA verification.
 # This is safe on Render because the connection stays on an internal
 # encrypted network regardless.
+# app.py
+
 engine = create_engine(
     DATABASE_URL,
     poolclass=NullPool,
     connect_args={
-        "sslmode": "require",
-        "sslrootcert": ""
+        "sslmode": "require"
+        # Remove "sslrootcert": ""
     }
 )
 
