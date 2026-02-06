@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleLocation(position, carrier) {
         const { latitude: lat, longitude: lon, accuracy } = position.coords;
 
-        if (accuracy > 50) {
+        if (accuracy > 20) {
             alert("GPS accuracy too low");
             contributeBtn.disabled = false;
             return;
