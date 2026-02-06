@@ -194,50 +194,32 @@ def submit_data():
 
 @app.route('/api/get-carrier')
 def get_carrier():
-    # 1. Get the real user IP
+    # Detect the user's IP from headers or remote address
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    print(f"[DEBUG] Detecting carrier for IP: {ip}")
 
-    # 2. Check if it's a local/private IP
-    if ip.startswith(('127.', '192.', '10.', '172.')) or ip == '::1':
-        print("[DEBUG] Local IP detected. Detection skipped.")
-        return jsonify({
-            "carrier": "Unknown (Local IP)",
-            "debug_info": f"Carrier detection requires a public IP. Your current IP is {ip}"
-        })
+    # Skip detection for local development IPs
+    if ip.startswith(('127.', '192.', '10.', '172.')):
+        return jsonify({"carrier": "Unknown (Local IP)"})
 
     try:
-        # 3. Request data from ipinfo.io
-        print(f"[DEBUG] Fetching org from ipinfo.io for {ip}...")
+        # Use a slightly longer timeout for DNS-heavy environments like Render
         r = requests.get(f"https://ipinfo.io/{ip}/org", timeout=5)
         
-        if r.status_code != 200:
-            print(f"[ERROR] ipinfo.io returned status {r.status_code}: {r.text}")
-            return jsonify({"error": f"External API error: {r.status_code}"}), 502
+        if r.status_code == 200:
+            org = r.text.lower()
+            if "jio" in org: carrier = "Jio"
+            elif "airtel" in org: carrier = "Airtel"
+            elif "vodafone" in org or "idea" in org or "vi" in org: carrier = "VI"
+            elif "bsnl" in org: carrier = "BSNL"
+            else: carrier = "Other"
+            return jsonify({"carrier": carrier})
+        
+        return jsonify({"carrier": "Other", "reason": "Non-200 response"})
 
-        org = r.text.lower()
-        print(f"[DEBUG] ipinfo response: {org}")
-
-        # 4. Map organization to carrier names
-        if "jio" in org:
-            carrier = "Jio"
-        elif "airtel" in org:
-            carrier = "Airtel"
-        elif "vodafone" in org or "idea" in org or "vi" in org:
-            carrier = "VI"
-        elif "bsnl" in org:
-            carrier = "BSNL"
-        else:
-            carrier = "Other"
-
-        return jsonify({"carrier": carrier, "org_raw": org})
-
-    except requests.exceptions.Timeout:
-        print("[ERROR] Connection to ipinfo.io timed out.")
-        return jsonify({"error": "External API timeout"}), 504
-    except Exception as e:
-        print(f"[ERROR] Carrier detection failed: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    except requests.exceptions.RequestException as e:
+        # Log the specific error for debugging in Render logs
+        print(f"Carrier detection error: {e}")
+        return jsonify({"carrier": "Other", "error": "Detection service unavailable"}), 200
 # -------------------------------------------------
 # SOCKET EVENTS
 # -------------------------------------------------
