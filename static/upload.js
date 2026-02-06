@@ -150,11 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleLocation(position, carrier) {
         const { latitude: lat, longitude: lon, accuracy } = position.coords;
 
-        if (accuracy > 20) {
-            alert("GPS accuracy too low");
-            contributeBtn.disabled = false;
-            return;
-        }
+        // if (accuracy > 20) {
+        //     alert("GPS accuracy too low");
+        //     contributeBtn.disabled = false;
+        //     return;
+        // }
 
         if (!isPointInPolygon(lat, lon, VIT_POLYGON)) {
         alert("🚫 You are outside the campus polygon boundary.");
