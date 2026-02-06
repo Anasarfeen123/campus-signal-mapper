@@ -194,16 +194,19 @@ def submit_data():
 
 @app.route('/api/get-carrier')
 def get_carrier():
-    # Detect the user's IP from headers or remote address
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-
-    # Skip detection for local development IPs
-    if ip.startswith(('127.', '192.', '10.', '172.')):
+    # 1. Extract the primary IP from the X-Forwarded-For chain
+    raw_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    # 2. Clean the IP: Take only the first one if it's a list
+    ip = raw_ip.split(',')[0].strip()
+    
+    # 3. Skip detection for local/private IPs
+    if ip.startswith(('127.', '192.', '10.', '172.')) or ip == '::1':
         return jsonify({"carrier": "Unknown (Local IP)"})
 
     try:
-        # Use a slightly longer timeout for DNS-heavy environments like Render
-        r = requests.get(f"https://ipinfo.io/{ip}/org", timeout=5)
+        # 4. Increased timeout to 10s to handle Render's DNS resolution issues
+        r = requests.get(f"https://ipinfo.io/{ip}/org", timeout=10)
         
         if r.status_code == 200:
             org = r.text.lower()
@@ -214,12 +217,12 @@ def get_carrier():
             else: carrier = "Other"
             return jsonify({"carrier": carrier})
         
-        return jsonify({"carrier": "Other", "reason": "Non-200 response"})
+        return jsonify({"carrier": "Other", "reason": f"API status {r.status_code}"})
 
     except requests.exceptions.RequestException as e:
-        # Log the specific error for debugging in Render logs
+        # Log error but return a safe fallback to "Other"
         print(f"Carrier detection error: {e}")
-        return jsonify({"carrier": "Other", "error": "Detection service unavailable"}), 200
+        return jsonify({"carrier": "Other", "error": "Detection timed out"}), 200
 # -------------------------------------------------
 # SOCKET EVENTS
 # -------------------------------------------------
