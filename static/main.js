@@ -185,3 +185,22 @@ updateOfflineUI();
 
 // ================== INIT ==================
 fetchSamples();
+// static/main.js
+
+document.addEventListener('DOMContentLoaded', () => {
+    const controlPanel = document.getElementById('control-panel');
+    const toggleBtn = document.getElementById('menu-toggle');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            controlPanel.classList.toggle('collapsed');
+            
+            // Optional: Change the button text/icon
+            if (controlPanel.classList.contains('collapsed')) {
+                toggleBtn.textContent = '▲'; // Show up arrow when closed
+            } else {
+                toggleBtn.textContent = '▼'; // Show down arrow when open
+            }
+        });
+    }
+});

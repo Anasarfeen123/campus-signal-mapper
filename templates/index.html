@@ -145,7 +145,51 @@ select {
   background:rgba(255,255,255,.9);
   font-weight:600;
 }
+/* index.html CSS */
 
+/* Toggle Button - Hidden on Desktop */
+.menu-toggle-btn {
+  display: none;
+  position: absolute;
+  top: -45px;
+  right: 15px;
+  width: 40px;
+  height: 40px;
+  background: var(--blue);
+  color: white;
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+  font-size: 20px;
+  z-index: 1001;
+}
+
+@media (max-width: 600px) {
+  .menu-toggle-btn {
+    display: block; /* Show only on mobile */
+  }
+
+  .controls {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-top: 25px;
+  }
+
+  /* Collapsed State: Slide panel down */
+  .controls.collapsed {
+    transform: translateY(calc(100% - 60px)); /* Leaves only the header/toggle visible */
+  }
+
+  /* Change icon when collapsed */
+  .controls.collapsed #menu-toggle::after {
+    content: "▲";
+    font-size: 12px;
+  }
+}
 /* ================= BUTTON ================= */
 button {
   width:100%;
@@ -246,7 +290,9 @@ button {
 
 <div id="map"></div>
 
-<div class="controls">
+<div class="controls" id="control-panel">
+  <button id="menu-toggle" class="menu-toggle-btn">☰</button>
+
   <div class="header">
     <h1>VIT Signal Map</h1>
     <div id="status">
@@ -255,41 +301,44 @@ button {
     </div>
   </div>
 
-  <div id="offline-indicator" class="offline-banner">
-    📴 Offline – live updates paused
-  </div>
+  <div id="menu-content">
+    <div id="offline-indicator" class="offline-banner">
+      Offline – live updates paused
+    </div>
 
-  <label>Data Layer</label>
-  <select id="heatmap-data">
-    <option value="dbm">Signal Strength</option>
-    <option value="download">Download Speed</option>
-  </select>
+    <label>Data Layer</label>
+    <select id="heatmap-data">
+      <option value="dbm">Signal Strength</option>
+      <option value="download">Download Speed</option>
+    </select>
 
-  <label>Carrier</label>
-  <select id="carrier-select">
-    <option value="">All</option>
-    <option>Jio</option>
-    <option>Airtel</option>
-    <option>VI</option>
-    <option>BSNL</option>
-  </select>
+    <label>Carrier</label>
+    <select id="carrier-select">
+      <option value="">All</option>
+      <option>Jio</option>
+      <option>Airtel</option>
+      <option>VI</option>
+      <option>BSNL</option>
+    </select>
 
-  <label>Network</label>
-  <select id="network">
-    <option value="">All</option>
-    <option>3G</option>
-    <option>4G</option>
-    <option>5G</option>
-  </select>
+    <label>Network</label>
+    <select id="network">
+      <option value="">All</option>
+      <option>3G</option>
+      <option>4G</option>
+      <option>5G</option>
+    </select>
 
-  <button id="locate-btn" class="btn-primary">
-    📍 Show My Location
-  </button>
-  <a href="/upload" style="text-decoration: none;">
-    <button class="btn-secondary" style="margin-top: 10px; background: #64748b; color: white;">
-        📤 Contribute Data
+    <button id="locate-btn" class="btn-primary">
+      📍 Show My Location
     </button>
-  </a>
+    
+    <a href="/upload" style="text-decoration: none;">
+      <button class="btn-secondary" style="margin-top: 10px; background: #64748b; color: white; width: 100%;">
+          Contribute Data
+      </button>
+    </a>
+  </div>
 </div>
 
 <div id="toast" class="toast"></div>

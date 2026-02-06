@@ -192,6 +192,17 @@ def submit_data():
     socketio.emit("new_data_point", payload)
     return jsonify({"success": True}), 201
 
+@app.route('/api/speed-test-payload')
+def speed_test_payload():
+    """
+    Serves a 512KB text response for the frontend to download
+    and measure throughput.
+    """
+    # 512 KB of data (approx 4Mb). 
+    # Adjust size: 512 * 1024 bytes
+    data_size = 512 * 1024
+    return "0" * data_size
+
 @app.route('/api/get-carrier')
 def get_carrier():
     # 1. Extract the primary IP from the X-Forwarded-For chain

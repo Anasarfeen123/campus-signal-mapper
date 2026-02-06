@@ -19,9 +19,7 @@
             --shadow: 0 10px 25px rgba(0,0,0,0.08);
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -59,9 +57,7 @@
             line-height: 1.4;
         }
 
-        .control-group {
-            margin-bottom: 18px;
-        }
+        .control-group { margin-bottom: 18px; }
 
         label {
             display: block;
@@ -71,16 +67,17 @@
             margin-bottom: 6px;
         }
 
-        select {
+        select, input[type="text"], input[type="number"] {
             width: 100%;
             padding: 10px 12px;
             border-radius: 10px;
             border: 1px solid var(--border);
             font-size: 0.95rem;
             background: #fff;
+            font-family: inherit;
         }
 
-        select:focus {
+        select:focus, input:focus {
             outline: none;
             border-color: var(--primary);
         }
@@ -96,9 +93,7 @@
             transition: transform 0.05s ease, background 0.15s ease;
         }
 
-        button:active {
-            transform: scale(0.98);
-        }
+        button:active { transform: scale(0.98); }
 
         #contribute-btn {
             background: var(--primary);
@@ -106,9 +101,7 @@
             margin-top: 6px;
         }
 
-        #contribute-btn:hover {
-            background: var(--primary-hover);
-        }
+        #contribute-btn:hover { background: var(--primary-hover); }
 
         #detect-carrier-btn {
             background: #f1f5f9;
@@ -118,17 +111,14 @@
             padding: 8px;
         }
 
-        #detect-carrier-btn:hover {
-            background: #e2e8f0;
-        }
+        #detect-carrier-btn:hover { background: #e2e8f0; }
 
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
 
-        #carrier-status,
-        #contribution-status {
+        #carrier-status, #contribution-status {
             font-size: 0.85rem;
             color: var(--muted);
             margin-top: 10px;
@@ -159,36 +149,35 @@
             font-weight: 600;
         }
 
-        .back-link:hover {
-            text-decoration: underline;
+        .back-link:hover { text-decoration: underline; }
+
+        /* Styles for the helper details */
+        details {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--muted);
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
         }
+        summary {
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .help-steps {
+            margin: 8px 0 0 16px;
+            padding: 0;
+        }
+        .help-steps li { margin-bottom: 4px; }
+
         @media (max-width: 480px) {
-    body {
-        padding: 10px;
-        align-items: flex-start; /* Start from top on small screens */
-    }
-
-    .container {
-        padding: 20px;
-        border-radius: 20px;
-        box-shadow: none; /* Simplify UI on mobile */
-        border: 1px solid var(--border);
-    }
-
-    h1 {
-        font-size: 1.4rem;
-    }
-
-    /* Make buttons full width and easy to tap */
-    button {
-        padding: 15px;
-        font-size: 1rem;
-    }
-
-    #detect-carrier-btn {
-        margin-bottom: 20px;
-    }
-}
+            body { padding: 10px; align-items: flex-start; }
+            .container { padding: 20px; border-radius: 20px; box-shadow: none; border: 1px solid var(--border); }
+            h1 { font-size: 1.4rem; }
+            button { padding: 15px; font-size: 1rem; }
+            #detect-carrier-btn { margin-bottom: 20px; }
+        }
     </style>
 </head>
 
@@ -216,16 +205,43 @@
             <option value="BSNL">BSNL</option>
             <option value="Other">Other</option>
         </select>
+        
+        <input type="text" id="custom-carrier" placeholder="Enter carrier name" style="display:none; margin-top:10px;">
 
         <button type="button" id="detect-carrier-btn">
             Detect My Carrier
         </button>
-
         <p id="carrier-status"></p>
     </div>
 
+    <div class="control-group">
+        <label for="network-select">Network Type</label>
+        <select id="network-select">
+            <option value="">Auto-detect (if available)</option>
+            <option value="5G">5G</option>
+            <option value="4G">4G</option>
+            <option value="3G">3G</option>
+            <option value="2G">2G</option>
+        </select>
+    </div>
+
+    <div class="control-group">
+        <label for="signal-input">Signal Strength (dBm)</label>
+        <input type="number" id="signal-input" placeholder="-100" min="-140" max="-40">
+        
+        <details>
+            <summary>How to find this? (Android)</summary>
+            <ul class="help-steps">
+                <li>Go to <strong>Settings</strong></li>
+                <li>Tap <strong>About Phone</strong> > <strong>Status</strong></li>
+                <li>Look for <strong>SIM Status</strong></li>
+                <li>Find <strong>Signal Strength</strong> (e.g., -105 dBm)</li>
+            </ul>
+        </details>
+    </div>
+
     <button id="contribute-btn">
-        📍 Get Location & Submit
+        Get Location & Submit
     </button>
 
     <p id="contribution-status"></p>
@@ -236,7 +252,6 @@
 <script src="/static/upload.js"></script>
 </body>
 <small id="offline-indicator" style="display:none; color:#e11d48; text-align:center;">
-    📴 You are offline. Submissions will sync later.
+    You are offline. Submissions will sync later.
 </small>
-
 </html>

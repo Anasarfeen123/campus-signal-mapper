@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const customCarrierInput = document.getElementById('custom-carrier');
     const carrierStatus = document.getElementById('carrier-status');
     const detectBtn = document.getElementById('detect-carrier-btn');
+    
+    // NEW: Get references to new inputs
+    const networkSelect = document.getElementById('network-select');
+    const signalInput = document.getElementById('signal-input');
 
     // ---------- OFFLINE QUEUE ----------
     function getQueue() {
@@ -32,12 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function flushQueue() {
         if (!navigator.onLine) return;
-
         const queue = getQueue();
         if (queue.length === 0) return;
-
         const remaining = [];
-
         for (const sample of queue) {
             try {
                 const res = await fetch('/api/submit', {
@@ -50,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 remaining.push(sample);
             }
         }
-
         saveQueue(remaining);
     }
 
@@ -61,9 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => contributionStatus.textContent = "", 3000);
     });
 
-    // ---------- CAMPUS BOUNDS ----------
-    
-
+    // ---------- HELPER: POINT IN POLYGON ----------
     function isPointInPolygon(lat, lng, poly) {
         let x = lat, y = lng;
         let inside = false;
@@ -75,11 +73,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return inside;
     }
-
-    // Inside handleLocation, replace the old bounds check:
     
+    // ---------- HELPER: SPEED TEST ----------
+    async function performSpeedTest() {
+        const start = performance.now();
+        try {
+            // Fetch 512KB payload (must be implemented in app.py)
+            const res = await fetch(`/api/speed-test-payload?t=${start}`);
+            if (!res.ok) throw new Error("Speed test failed");
+            
+            const blob = await res.blob(); 
+            const end = performance.now();
+            
+            const durationInSeconds = (end - start) / 1000;
+            const bits = blob.size * 8;
+            const speedBps = bits / durationInSeconds;
+            const speedMbps = speedBps / (1024 * 1024);
+            
+            return parseFloat(speedMbps.toFixed(2));
+        } catch (e) {
+            console.warn("Speed test error:", e);
+            return null;
+        }
+    }
+
     // ---------- UI ----------
     carrierSelect.addEventListener('change', () => {
+        // Toggle custom input visibility
         customCarrierInput.style.display =
             carrierSelect.value === 'Other' ? 'block' : 'none';
     });
@@ -148,32 +168,39 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function handleLocation(position, carrier) {
-        const { latitude: lat, longitude: lon, accuracy } = position.coords;
-
-        // if (accuracy > 20) {
-        //     alert("GPS accuracy too low");
-        //     contributeBtn.disabled = false;
-        //     return;
-        // }
+        const { latitude: lat, longitude: lon } = position.coords;
 
         if (!isPointInPolygon(lat, lon, VIT_POLYGON)) {
-        alert("🚫 You are outside the campus polygon boundary.");
-        contributeBtn.disabled = false;
-        return;
-    }
+            alert("🚫 You are outside the campus polygon boundary.");
+            contributeBtn.disabled = false;
+            return;
+        }
 
-        let networkType = "Unknown";
-        let downloadSpeed = null;
-
-        if (navigator.connection) {
+        // 1. DETERMINE NETWORK TYPE
+        // Priority: Manual Input > Auto Detect > Unknown
+        let networkType = networkSelect.value;
+        
+        if (!networkType && navigator.connection) {
             const et = navigator.connection.effectiveType;
             if (et === '4g') networkType = '4G';
             else if (et === '3g') networkType = '3G';
             else if (et === '2g' || et === 'slow-2g') networkType = '2G';
+        }
+        if (!networkType) networkType = "Unknown";
 
-            if (!isNaN(navigator.connection.downlink)) {
-                downloadSpeed = navigator.connection.downlink;
-            }
+        // 2. GET SIGNAL STRENGTH
+        let signalStrength = signalInput.value ? parseInt(signalInput.value) : null;
+
+        // 3. PERFORM SPEED TEST
+        let downloadSpeed = null;
+        if (navigator.onLine) {
+            contributionStatus.textContent = "Running speed test... (~1s)";
+            downloadSpeed = await performSpeedTest();
+        }
+        
+        // Fallback to Network API estimate if speed test failed
+        if (!downloadSpeed && navigator.connection && !isNaN(navigator.connection.downlink)) {
+            downloadSpeed = navigator.connection.downlink;
         }
 
         const payload = {
@@ -181,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lng: lon,
             carrier,
             network_type: networkType,
-            signal_strength: null,
+            signal_strength: signalStrength,
             download_speed: downloadSpeed
         };
 
@@ -194,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            contributionStatus.textContent = "Submitting data...";
             const res = await fetch('/api/submit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -210,7 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(result.message || "Submit failed");
             }
 
-            contributionStatus.textContent = "✅ Data submitted!";
+            let msg = "✅ Data submitted!";
+            if (downloadSpeed) msg += ` (${downloadSpeed} Mbps)`;
+            contributionStatus.textContent = msg;
+            
         } catch {
             enqueue(payload);
             contributionStatus.textContent = "📴 Connection lost. Saved locally.";
