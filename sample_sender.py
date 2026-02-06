@@ -13,14 +13,12 @@ else:
 
 TOTAL_SAMPLES = 100
 
-# --- GEOFENCE CONSTANTS---
 VIT_BOUNDS = {
-    "min_lat": 12.839,
-    "max_lat": 12.844,
-    "min_lng": 80.151,
-    "max_lng": 80.157
+    "min_lat": 12.8387,
+    "max_lat": 12.8456,
+    "min_lng": 80.1510,
+    "max_lng": 80.1589
 }
-
 CARRIERS = ['Airtel', 'Jio', 'VI', 'BSNL']
 NETWORK_TYPES = ['4G', '5G']
 
