@@ -1,4 +1,9 @@
 // static/upload.js
+const VIT_POLYGON = [
+    [12.8455, 80.1532], [12.8447, 80.1587], [12.8435, 80.1589],
+    [12.8395, 80.1560], [12.8387, 80.1545], [12.8419, 80.1515],
+    [12.8425, 80.1510], [12.8456, 80.1518]
+];
 
 document.addEventListener('DOMContentLoaded', () => {
     const OFFLINE_QUEUE_KEY = "vit_signal_offline_queue";
@@ -57,11 +62,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ---------- CAMPUS BOUNDS ----------
-    const VIT_MIN_LAT = 12.839;
-    const VIT_MAX_LAT = 12.844;
-    const VIT_MIN_LON = 80.151;
-    const VIT_MAX_LON = 80.157;
+    
 
+    function isPointInPolygon(lat, lng, poly) {
+        let x = lat, y = lng;
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            let xi = poly[i][0], yi = poly[i][1];
+            let xj = poly[j][0], yj = poly[j][1];
+            let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    // Inside handleLocation, replace the old bounds check:
+    
     // ---------- UI ----------
     carrierSelect.addEventListener('change', () => {
         customCarrierInput.style.display =
@@ -140,12 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!(lat >= VIT_MIN_LAT && lat <= VIT_MAX_LAT &&
-              lon >= VIT_MIN_LON && lon <= VIT_MAX_LON)) {
-            alert("🚫 Outside campus");
-            contributeBtn.disabled = false;
-            return;
-        }
+        if (!isPointInPolygon(lat, lon, VIT_POLYGON)) {
+        alert("🚫 You are outside the campus polygon boundary.");
+        contributeBtn.disabled = false;
+        return;
+    }
 
         let networkType = "Unknown";
         let downloadSpeed = null;
