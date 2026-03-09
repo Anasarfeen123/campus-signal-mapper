@@ -1,343 +1,352 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VIT Chennai Signal Map</title>
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VIT Chennai · Signal Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
 <style>
-/* ================= THEME ================= */
 :root {
-  --blue:#2563eb;
-  --purple:#7c3aed;
-  --green:#22c55e;
-  --red:#ef4444;
-  --bg:#f1f5f9;
-  --glass:rgba(255,255,255,.82);
-  --text:#0f172a;
-  --muted:#64748b;
-  --radius:16px;
-  --shadow:0 25px 50px rgba(0,0,0,.18);
+  --bg: #020510;
+  --panel-bg: rgba(2,8,25,0.82);
+  --field-bg: rgba(255,255,255,0.035);
+  --field-hover: rgba(255,255,255,0.065);
+  --border: rgba(255,255,255,0.07);
+  --border-glow: rgba(0,240,255,0.35);
+  --cyan: #00f0ff;
+  --cyan-dim: rgba(0,240,255,0.12);
+  --cyan-glow: rgba(0,240,255,0.5);
+  --blue: #2060ff;
+  --purple: #8040ff;
+  --green: #00ff88;
+  --amber: #ffaa00;
+  --red: #ff3355;
+  --text: #d8e4f0;
+  --text-bright: #ffffff;
+  --dim: #4a5568;
+  --mono: 'JetBrains Mono', monospace;
+  --display: 'Rajdhani', sans-serif;
+  --body: 'Inter', system-ui, sans-serif;
 }
 
-/* ================= BASE ================= */
-html,body {
-  height:100%;
-  margin:0;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto;
-  background:radial-gradient(circle at top, #e0f2fe, #f8fafc 60%);
-  color:var(--text);
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+html { color-scheme:dark; height:100% }
+body { height:100%; font-family:var(--body); background:var(--bg); color:var(--text); overflow:hidden }
+#map { width:100%; height:100% }
+
+/* MAP FILTER */
+.map-tiles { filter:invert(1) hue-rotate(195deg) saturate(0.5) brightness(0.78) }
+
+/* ── SCAN LINE OVERLAY ── */
+body::after {
+  content:'';
+  position:fixed; inset:0; z-index:999; pointer-events:none;
+  background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
 }
 
-#map { height:100%; }
-
-/* Dim when outside campus */
-.map-dim {
-  filter: grayscale(.85) brightness(.7);
-  transition:.4s ease;
+/* ── CORNER BRACKETS ── */
+.panel {
+  position:absolute; top:16px; left:16px;
+  width:280px; z-index:1000;
 }
 
-/* ================= PANEL ================= */
-.controls {
+.panel-inner {
+  background:var(--panel-bg);
+  backdrop-filter:blur(32px) saturate(1.8);
+  -webkit-backdrop-filter:blur(32px) saturate(1.8);
+  border:1px solid var(--border);
+  border-radius:4px;
+  overflow:hidden;
+  position:relative;
+  box-shadow:
+    0 0 0 1px rgba(0,240,255,0.06) inset,
+    0 40px 80px rgba(0,0,0,0.8),
+    0 0 60px rgba(0,240,255,0.06),
+    0 0 120px rgba(0,240,255,0.03);
+  animation:panelIn .5s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* corner decorators */
+.panel-inner::before,
+.panel-inner::after {
+  content:'';
   position:absolute;
-  top:18px;
-  left:18px;
-  width:320px;
-  padding:18px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.75));
-  backdrop-filter: blur(16px);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  border:1px solid rgba(255,255,255,.4);
-  z-index:1000;
-  animation: floatIn .6s ease;
+  width:12px; height:12px;
+  border-color:var(--cyan);
+  border-style:solid;
+  z-index:2;
+}
+.panel-inner::before { top:-1px; left:-1px; border-width:2px 0 0 2px }
+.panel-inner::after  { bottom:-1px; right:-1px; border-width:0 2px 2px 0 }
+
+@keyframes panelIn { from{opacity:0;transform:translateX(-18px)} to{opacity:1;transform:none} }
+
+/* top scan line */
+.scan-line {
+  height:2px;
+  background:linear-gradient(90deg, transparent 0%, var(--cyan) 40%, var(--cyan) 60%, transparent 100%);
+  opacity:0.7;
+  animation:scan 3s ease-in-out infinite;
+}
+@keyframes scan {
+  0%,100% { opacity:0.4; background-position:0% }
+  50% { opacity:0.9 }
 }
 
-@keyframes floatIn {
-  from { opacity:0; transform:translateY(12px); }
-  to { opacity:1; transform:none; }
+/* ── HEADER ── */
+.panel-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px 10px;
+}
+.brand { line-height:1 }
+.brand-name {
+  font-family:var(--display);
+  font-size:1.3rem; font-weight:700; letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--text-bright);
+  text-shadow:0 0 20px var(--cyan-glow), 0 0 40px rgba(0,240,255,0.3);
+}
+.brand-sub {
+  font-family:var(--mono);
+  font-size:.52rem; letter-spacing:2.5px;
+  color:var(--cyan); opacity:0.7;
+  text-transform:uppercase; margin-top:3px;
 }
 
-/* ================= HEADER ================= */
-.header {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:14px;
+/* ── STATUS ── */
+.status-wrap { display:flex; align-items:center; gap:6px }
+.status-pill {
+  display:flex; align-items:center; gap:5px;
+  padding:4px 9px 4px 7px;
+  background:rgba(0,240,255,0.05);
+  border:1px solid rgba(0,240,255,0.15);
+  border-radius:2px;
+  font-family:var(--mono); font-size:.58rem;
+  color:rgba(0,240,255,0.7); letter-spacing:.5px;
+}
+.dot { width:6px; height:6px; border-radius:50%; background:var(--dim) }
+.dot.live { background:var(--green); box-shadow:0 0 8px var(--green); animation:blink 2s infinite }
+.dot.loading { background:var(--amber); animation:blink .7s infinite }
+.dot.disconnected { background:var(--red); box-shadow:0 0 6px var(--red) }
+@keyframes blink { 50%{opacity:.2} }
+
+/* ── STATS ── */
+.stats {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  border-top:1px solid var(--border);
+  border-bottom:1px solid rgba(0,240,255,0.1);
+  background:rgba(0,240,255,0.02);
+}
+.stat { padding:10px 4px; text-align:center; position:relative }
+.stat+.stat::before {
+  content:''; position:absolute; left:0; top:15%; bottom:15%;
+  width:1px; background:linear-gradient(to bottom,transparent,var(--border),transparent);
+}
+.stat-val {
+  font-family:var(--mono); font-size:.78rem; font-weight:700;
+  color:var(--cyan); display:block; letter-spacing:.5px;
+  text-shadow:0 0 10px var(--cyan-glow);
+}
+.stat-lbl {
+  font-size:.5rem; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.8px; display:block; margin-top:2px;
 }
 
-.header h1 {
-  font-size:1.15rem;
-  font-weight:800;
-  letter-spacing:.2px;
-  background:linear-gradient(90deg, var(--blue), var(--purple));
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-}
-
-/* ================= STATUS ================= */
-#status {
-  display:flex;
-  gap:6px;
-  align-items:center;
-  font-size:.72rem;
-  font-weight:600;
-  color:var(--muted);
-}
-
-#status-light {
-  width:9px;
-  height:9px;
-  border-radius:50%;
-  background:#94a3b8;
-}
-
-#status-light.live {
-  background:var(--green);
-  box-shadow:0 0 14px rgba(34,197,94,.9);
-  animation:pulse 2.2s infinite;
-}
-
-#status-light.loading {
-  background:#facc15;
-  animation:pulse 1.2s infinite;
-}
-
-#status-light.disconnected {
-  background:var(--red);
-}
-
-@keyframes pulse {
-  50% { opacity:.45 }
-}
-
-/* ================= OFFLINE ================= */
+/* ── OFFLINE ── */
 .offline-banner {
-  display:none;
-  margin-bottom:10px;
-  background:linear-gradient(90deg, #fee2e2, #fecaca);
-  color:#991b1b;
-  padding:8px;
-  border-radius:10px;
-  font-size:.75rem;
-  font-weight:700;
-  text-align:center;
+  display:none; padding:6px 14px;
+  background:rgba(255,51,85,0.1);
+  border-bottom:1px solid rgba(255,51,85,0.2);
+  font-family:var(--mono); font-size:.65rem; color:#ff6680; text-align:center; letter-spacing:.5px;
 }
 
-/* ================= FORM ================= */
-label {
-  font-size:.7rem;
-  font-weight:700;
-  color:var(--muted);
-  margin-top:6px;
-  display:block;
+/* ── BODY ── */
+.panel-body { padding:13px 13px 15px; display:flex; flex-direction:column; gap:9px }
+
+.field { display:flex; flex-direction:column; gap:4px }
+.field-label {
+  font-family:var(--mono); font-size:.56rem; font-weight:600;
+  color:rgba(0,240,255,0.5); text-transform:uppercase; letter-spacing:1.2px; padding-left:1px;
 }
 
 select {
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid rgba(0,0,0,.08);
-  margin-bottom:12px;
-  background:rgba(255,255,255,.9);
-  font-weight:600;
+  width:100%; padding:9px 30px 9px 11px;
+  background:var(--field-bg); border:1px solid var(--border);
+  border-radius:3px; color:var(--text);
+  font-family:var(--body); font-size:.84rem; font-weight:500;
+  appearance:none; cursor:pointer; color-scheme:dark;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M1 1l3.5 3L8 1' fill='none' stroke='%2300f0ff' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' opacity='.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center;
+  transition:border-color .15s, background .15s, box-shadow .15s;
+  letter-spacing:.2px;
 }
-/* index.html CSS */
+select:hover { background-color:var(--field-hover); border-color:rgba(0,240,255,0.2) }
+select:focus { outline:none; border-color:rgba(0,240,255,0.5); box-shadow:0 0 0 3px rgba(0,240,255,0.07), 0 0 12px rgba(0,240,255,0.1) }
+select option { background:#050e1e; color:var(--text) }
 
-/* Toggle Button - Hidden on Desktop */
-.menu-toggle-btn {
-  display: none;
-  position: absolute;
-  top: -45px;
-  right: 15px;
-  width: 40px;
-  height: 40px;
-  background: var(--blue);
-  color: white;
-  border-radius: 50%;
-  box-shadow: var(--shadow);
-  font-size: 20px;
-  z-index: 1001;
+/* ── BUTTONS ── */
+.btn {
+  width:100%; padding:10px 14px; border:none; border-radius:3px;
+  font-family:var(--display); font-size:.95rem; font-weight:600;
+  letter-spacing:1.5px; text-transform:uppercase;
+  cursor:pointer; transition:all .15s; position:relative; overflow:hidden;
 }
-
-@media (max-width: 600px) {
-  .menu-toggle-btn {
-    display: block; /* Show only on mobile */
-  }
-
-  .controls {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    padding-top: 25px;
-  }
-
-  /* Collapsed State: Slide panel down */
-  .controls.collapsed {
-    transform: translateY(calc(100% - 60px)); /* Leaves only the header/toggle visible */
-  }
-
-  /* Change icon when collapsed */
-  .controls.collapsed #menu-toggle::after {
-    content: "▲";
-    font-size: 12px;
-  }
-}
-/* ================= BUTTON ================= */
-button {
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:12px;
-  font-weight:800;
-  cursor:pointer;
-  transition:.18s ease;
+.btn:active { transform:scale(.97) }
+.btn::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.07),transparent);
+  pointer-events:none;
 }
 
 .btn-primary {
-  background:linear-gradient(135deg, var(--blue), var(--purple));
-  color:white;
-  box-shadow:0 10px 25px rgba(99,102,241,.35);
+  background:linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+  color:#fff;
+  box-shadow:0 4px 24px rgba(32,96,255,0.4), 0 0 0 1px rgba(255,255,255,0.08) inset;
 }
+.btn-primary:hover { box-shadow:0 6px 32px rgba(32,96,255,0.6), 0 0 20px rgba(128,64,255,0.3), 0 0 0 1px rgba(255,255,255,0.12) inset }
 
-.btn-primary:hover {
-  transform:translateY(-1px);
-  box-shadow:0 14px 32px rgba(99,102,241,.45);
+.btn-ghost {
+  background:transparent;
+  color:var(--cyan); opacity:0.75;
+  border:1px solid rgba(0,240,255,0.2);
+  font-size:.88rem;
 }
+.btn-ghost:hover { opacity:1; background:rgba(0,240,255,0.05); border-color:rgba(0,240,255,0.4); box-shadow:0 0 16px rgba(0,240,255,0.08) }
 
-/* ================= TOAST ================= */
+/* ── MOBILE TOGGLE ── */
+.toggle-btn {
+  display:none; width:30px; height:30px;
+  background:rgba(0,240,255,0.06); border:1px solid rgba(0,240,255,0.2);
+  border-radius:2px; color:var(--cyan); font-size:12px; cursor:pointer;
+  align-items:center; justify-content:center; flex-shrink:0;
+  font-family:var(--mono); transition:background .15s;
+}
+.toggle-btn:hover { background:rgba(0,240,255,0.12) }
+
+/* ── TOAST ── */
 .toast {
-  position:fixed;
-  bottom:28px;
-  left:50%;
-  transform:translateX(-50%) translateY(16px);
-  background:#0f172a;
-  color:white;
-  padding:12px 22px;
-  border-radius:999px;
-  font-size:.85rem;
-  font-weight:700;
-  opacity:0;
-  pointer-events:none;
-  transition:.3s ease;
-  box-shadow:0 15px 35px rgba(0,0,0,.45);
+  position:fixed; bottom:28px; left:50%;
+  transform:translateX(-50%) translateY(14px);
+  background:rgba(2,8,25,0.95); border:1px solid rgba(0,240,255,0.2);
+  backdrop-filter:blur(20px); color:var(--text);
+  padding:9px 20px; border-radius:2px;
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.5px;
+  opacity:0; pointer-events:none; transition:all .28s cubic-bezier(.22,1,.36,1);
+  white-space:nowrap; box-shadow:0 16px 40px rgba(0,0,0,.7), 0 0 20px rgba(0,240,255,0.06);
+  z-index:9999;
 }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0) }
+.toast.error { border-color:rgba(255,51,85,0.4); color:#ff6680 }
+.toast.success { border-color:rgba(0,255,136,0.3); color:#66ffb0 }
 
-.toast.show {
-  opacity:1;
-  transform:translateX(-50%) translateY(0);
+/* ── LEAFLET ── */
+.leaflet-control-zoom { border:none!important; box-shadow:none!important }
+.leaflet-control-zoom a {
+  width:32px!important; height:32px!important; line-height:32px!important;
+  background:var(--panel-bg)!important; backdrop-filter:blur(16px)!important;
+  border:1px solid var(--border)!important; color:var(--cyan)!important;
+  font-size:16px!important; border-radius:2px!important; margin-bottom:2px!important;
 }
-
-.toast.error { background:#991b1b; }
-.toast.success { background:#166534; }
-
-/* ================= CAMPUS POLYGON ================= */
-.campus-boundary {
-  animation: glow 4s ease-in-out infinite;
-  filter: drop-shadow(0 0 10px rgba(37,99,235,.5));
+.leaflet-control-zoom a:hover { background:rgba(0,240,255,0.07)!important; border-color:rgba(0,240,255,0.25)!important }
+.leaflet-control-attribution {
+  background:rgba(2,8,25,0.85)!important; backdrop-filter:blur(8px)!important;
+  color:var(--dim)!important; font-size:.56rem!important;
+  border-top:1px solid var(--border)!important; border-left:1px solid var(--border)!important;
+  padding:3px 7px!important;
 }
-
-@keyframes glow {
-  0%,100% { opacity:.75 }
-  50% { opacity:1 }
+.leaflet-control-attribution a { color:var(--cyan)!important; opacity:.6 }
+.leaflet-popup-content-wrapper {
+  background:rgba(2,8,25,0.95)!important; backdrop-filter:blur(24px)!important;
+  border:1px solid rgba(0,240,255,0.2)!important; border-radius:4px!important;
+  color:var(--text)!important; box-shadow:0 20px 40px rgba(0,0,0,.7), 0 0 20px rgba(0,240,255,0.06)!important;
 }
+.leaflet-popup-tip { background:rgba(2,8,25,0.95)!important }
+.leaflet-popup-close-button { color:var(--cyan)!important; opacity:.6 }
 
-@media (max-width: 600px) {
-  .controls {
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    border-radius: var(--radius) var(--radius) 0 0; /* Rounded top only */
-    padding: 15px;
-    box-sizing: border-box;
-    animation: slideUp 0.4s ease;
+/* ── MOBILE BOTTOM SHEET ── */
+@media(max-width:600px) {
+  .panel {
+    position:fixed; top:auto; bottom:0; left:0; right:0; width:100%;
+    animation:none;
   }
-
-  @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+  .panel-inner {
+    border-radius:12px 12px 0 0;
+    border-bottom:none;
+    transition:transform .38s cubic-bezier(.32,0,.15,1);
   }
-
-  /* Increase touch target sizes for mobile */
-  select, button {
-    height: 48px; 
-    font-size: 1rem;
+  .panel.collapsed .panel-inner { transform:translateY(calc(100% - 64px)) }
+  .panel-inner::before,
+  .panel-inner::after { display:none }
+  .drag-handle {
+    display:block; width:40px; height:4px;
+    background:rgba(0,240,255,0.2); border-radius:2px;
+    margin:10px auto 0; 
   }
-
-  .header h1 {
-    font-size: 1rem;
-  }
-
-  /* Hide labels on mobile to save space, use placeholders or context */
-  label {
-    margin-top: 4px;
-    font-size: 0.65rem;
-  }
+  .panel-head { padding-top:10px }
+  .toggle-btn { display:flex }
+  select,.btn { height:46px; font-size:.95rem }
+  .panel-body { gap:11px; padding:13px 13px 28px }
 }
+@media(min-width:601px) { .drag-handle { display:none } }
 </style>
 </head>
-
 <body>
-
 <div id="map"></div>
 
-<div class="controls" id="control-panel">
-  <button id="menu-toggle" class="menu-toggle-btn">☰</button>
+<div class="panel" id="panel">
+  <div class="panel-inner">
+    <div class="scan-line"></div>
+    <div class="drag-handle"></div>
 
-  <div class="header">
-    <h1>VIT Signal Map</h1>
-    <div id="status">
-      <div id="status-light"></div>
-      <span id="status-text">Connecting</span>
+    <div class="panel-head">
+      <div class="brand">
+        <div class="brand-name">Signal Map</div>
+        <div class="brand-sub">VIT Chennai · Live</div>
+      </div>
+      <div class="status-wrap">
+        <div class="status-pill">
+          <div class="dot" id="status-light"></div>
+          <span id="status-text">INIT</span>
+        </div>
+        <button class="toggle-btn" id="menu-toggle">▾</button>
+      </div>
     </div>
-  </div>
 
-  <div id="menu-content">
-    <div id="offline-indicator" class="offline-banner">
-      Offline – live updates paused
+    <div class="stats">
+      <div class="stat"><span class="stat-val" id="sample-count">—</span><span class="stat-lbl">Samples</span></div>
+      <div class="stat"><span class="stat-val" id="avg-signal">—</span><span class="stat-lbl">Avg dBm</span></div>
+      <div class="stat"><span class="stat-val" id="avg-speed">—</span><span class="stat-lbl">Avg Mbps</span></div>
     </div>
 
-    <label>Data Layer</label>
-    <select id="heatmap-data">
-      <option value="dbm">Signal Strength</option>
-      <option value="download">Download Speed</option>
-    </select>
+    <div id="offline-indicator" class="offline-banner">// OFFLINE — UPDATES PAUSED</div>
 
-    <label>Carrier</label>
-    <select id="carrier-select">
-      <option value="">All</option>
-      <option>Jio</option>
-      <option>Airtel</option>
-      <option>VI</option>
-      <option>BSNL</option>
-    </select>
-
-    <label>Network</label>
-    <select id="network">
-      <option value="">All</option>
-      <option>3G</option>
-      <option>4G</option>
-      <option>5G</option>
-    </select>
-
-    <button id="locate-btn" class="btn-primary">
-      📍 Show My Location
-    </button>
-    
-    <a href="/upload" style="text-decoration: none;">
-      <button class="btn-secondary" style="margin-top: 10px; background: #64748b; color: white; width: 100%;">
-          Contribute Data
-      </button>
-    </a>
+    <div class="panel-body" id="menu-content">
+      <div class="field">
+        <span class="field-label">// Data Layer</span>
+        <select id="heatmap-data">
+          <option value="dbm">Signal Strength (dBm)</option>
+          <option value="download">Download Speed (Mbps)</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="field-label">// Carrier</span>
+        <select id="carrier-select">
+          <option value="">All Carriers</option>
+          <option>Jio</option><option>Airtel</option><option>VI</option><option>BSNL</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="field-label">// Network</span>
+        <select id="network">
+          <option value="">All Types</option>
+          <option>2G</option><option>3G</option><option>4G</option><option>5G</option>
+        </select>
+      </div>
+      <button id="locate-btn" class="btn btn-primary">📍 Locate Me</button>
+      <button class="btn btn-ghost" onclick="window.location.href='/upload'">＋ Contribute Data</button>
+    </div>
   </div>
 </div>
 
@@ -346,9 +355,22 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
-
-<!-- main.js stays exactly the same -->
 <script src="/static/main.js"></script>
-
+<script>
+const panel = document.getElementById('panel');
+const toggleBtn = document.getElementById('menu-toggle');
+if (toggleBtn) {
+  toggleBtn.addEventListener('click', () => {
+    panel.classList.toggle('collapsed');
+    toggleBtn.textContent = panel.classList.contains('collapsed') ? '▴' : '▾';
+  });
+}
+function updateOffline() {
+  document.getElementById('offline-indicator').style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online', updateOffline);
+window.addEventListener('offline', updateOffline);
+updateOffline();
+</script>
 </body>
 </html>

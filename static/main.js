@@ -1,23 +1,19 @@
 // ================== CONFIG ==================
-const API_BASE = "https://vitc-signal-mapper.onrender.com";
+const API_BASE = window.location.origin; // Relative — works on any host
 
 // ================== CAMPUS POLYGON ==================
 const VIT_POLYGON_COORDS = [
-    [12.8455, 80.1532],
-    [12.8447, 80.1587],
-    [12.8435, 80.1589],
-    [12.8395, 80.1560],
-    [12.8387, 80.1545],
-    [12.8419, 80.1515],
-    [12.8425, 80.1510],
-    [12.8456, 80.1518]
+    [12.8455, 80.1532], [12.8447, 80.1587], [12.8435, 80.1589],
+    [12.8395, 80.1560], [12.8387, 80.1545], [12.8419, 80.1515],
+    [12.8425, 80.1510], [12.8456, 80.1518]
 ];
 
 const VIT_POLYGON = L.polygon(VIT_POLYGON_COORDS, {
-    color: "#2563eb",
+    color: "#38bdf8",
     weight: 2,
-    fillOpacity: 0.08,
-    dashArray: "6 4",
+    fillOpacity: 0.07,
+    fillColor: "#38bdf8",
+    dashArray: "8 5",
     interactive: false
 });
 
@@ -25,182 +21,248 @@ const VIT_BOUNDS = VIT_POLYGON.getBounds();
 
 // ================== MAP ==================
 const map = L.map("map", {
-    maxBounds: VIT_BOUNDS,
-    maxBoundsViscosity: 0.8,
+    maxBounds: VIT_BOUNDS.pad(0.15),
+    maxBoundsViscosity: 0.9,
     minZoom: 15,
-    maxZoom: 19
-}).setView([12.8406, 80.1534], 17);
+    maxZoom: 19,
+    zoomControl: false
+}).setView([12.8421, 80.1553], 17);
+
+// Move zoom control to bottom-right to avoid panel overlap
+L.control.zoom({ position: "bottomright" }).addTo(map);
 
 VIT_POLYGON.addTo(map);
 
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+    className: "map-tiles"
 }).addTo(map);
 
 // ================== HEATMAP ==================
 const heatLayer = L.heatLayer([], {
-    radius: 15,
-    blur: 10
+    radius: 22,
+    blur: 18,
+    maxZoom: 17,
+    gradient: {
+        0.0: "#3b0764",
+        0.25: "#1d4ed8",
+        0.5: "#06b6d4",
+        0.7: "#16a34a",
+        0.85: "#ca8a04",
+        1.0: "#dc2626"
+    }
 }).addTo(map);
 
 // ================== DOM ==================
-const carrierSelect = document.getElementById("carrier-select");
-const networkSelect = document.getElementById("network");
-const heatmapDataSelect = document.getElementById("heatmap-data");
-const statusLight = document.getElementById("status-light");
-const statusText = document.getElementById("status-text");
-const locateBtn = document.getElementById("locate-btn");
-const offlineIndicator = document.getElementById("offline-indicator");
-const toast = document.getElementById("toast");
+const carrierSelect   = document.getElementById("carrier-select");
+const networkSelect   = document.getElementById("network");
+const heatmapDataSel  = document.getElementById("heatmap-data");
+const statusLight     = document.getElementById("status-light");
+const statusText      = document.getElementById("status-text");
+const locateBtn       = document.getElementById("locate-btn");
+const offlineBar      = document.getElementById("offline-indicator");
+const toast           = document.getElementById("toast");
+const sampleCount     = document.getElementById("sample-count");
+const avgSignal       = document.getElementById("avg-signal");
+const avgSpeed        = document.getElementById("avg-speed");
 
-// ================== UI HELPERS ==================
+// ================== HELPERS ==================
 function setStatus(state, text) {
     statusLight.className = "";
     statusLight.classList.add(state);
     statusText.textContent = text;
 }
 
-function showToast(msg, type = "info") {
+function showToast(msg, type = "info", duration = 3200) {
     toast.textContent = msg;
     toast.className = `toast show ${type}`;
-    setTimeout(() => toast.classList.remove("show"), 3000);
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove("show"), duration);
+}
+
+function formatDbm(v) {
+    if (v == null) return "—";
+    return `${Math.round(v)} dBm`;
+}
+
+function formatMbps(v) {
+    if (v == null) return "—";
+    return `${v.toFixed(1)} Mbps`;
+}
+
+// ================== STATS ==================
+async function fetchStats() {
+    try {
+        const res = await fetch(`${API_BASE}/api/stats`);
+        if (!res.ok) return;
+        const d = await res.json();
+        if (sampleCount) sampleCount.textContent = d.total_samples?.toLocaleString() ?? "—";
+        if (avgSignal)   avgSignal.textContent   = formatDbm(d.avg_signal_dbm);
+        if (avgSpeed)    avgSpeed.textContent     = formatMbps(d.avg_speed_mbps);
+    } catch { /* silently fail — stats are non-critical */ }
 }
 
 // ================== DATA ==================
+let _allPoints = [];
+
 async function fetchSamples() {
     const qs = new URLSearchParams();
-    if (carrierSelect.value) qs.set("carrier", carrierSelect.value);
-    if (networkSelect.value) qs.set("network_type", networkSelect.value);
+    if (carrierSelect.value)  qs.set("carrier",      carrierSelect.value);
+    if (networkSelect.value)  qs.set("network_type", networkSelect.value);
+    qs.set("limit", "5000");
 
     try {
         setStatus("loading", "Loading…");
         const res = await fetch(`${API_BASE}/api/samples?${qs}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-
-        const points = data
-            .filter(s => s.lat && s.lng)
-            .map(s => {
-                const weight =
-                    heatmapDataSelect.value === "dbm"
-                        ? (Math.max(-120, Math.min(-50, s.signal_strength)) + 120) / 70
-                        : Math.min(100, s.download_speed || 0) / 100;
-
-                return [s.lat, s.lng, weight];
-            });
-
-        heatLayer.setLatLngs(points);
-        setStatus("live", "Live");
-    } catch {
+        _allPoints = data;
+        renderHeatmap(data);
+        setStatus("live", `Live · ${data.length} pts`);
+    } catch (err) {
+        console.error("fetchSamples:", err);
         setStatus("disconnected", "Offline");
+        showToast("Failed to load data", "error");
     }
 }
 
-carrierSelect.addEventListener("change", fetchSamples);
-networkSelect.addEventListener("change", fetchSamples);
-heatmapDataSelect.addEventListener("change", fetchSamples);
+function renderHeatmap(data) {
+    const mode = heatmapDataSel?.value ?? "dbm";
+    const points = data
+        .filter(s => s.lat && s.lng)
+        .map(s => {
+            let weight;
+            if (mode === "dbm") {
+                const clamped = Math.max(-120, Math.min(-50, s.signal_strength ?? -120));
+                weight = (clamped + 120) / 70;
+            } else {
+                weight = Math.min(100, s.download_speed ?? 0) / 100;
+            }
+            return [s.lat, s.lng, weight];
+        });
+
+    heatLayer.setLatLngs(points);
+}
+
+carrierSelect?.addEventListener("change",  fetchSamples);
+networkSelect?.addEventListener("change",  fetchSamples);
+heatmapDataSel?.addEventListener("change", () => renderHeatmap(_allPoints));
 
 // ================== SOCKET.IO ==================
-const socket = io(API_BASE, { transports: ["websocket"] });
+const socket = io(API_BASE, {
+    transports: ["websocket"],
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000
+});
 
-socket.on("connect", () => setStatus("live", "Live"));
-socket.on("disconnect", () => setStatus("disconnected", "Offline"));
+socket.on("connect",    () => setStatus("live", "Live"));
+socket.on("disconnect", () => setStatus("disconnected", "Disconnected"));
+socket.on("connect_error", () => setStatus("disconnected", "Reconnecting…"));
 
 socket.on("new_data_point", s => {
     if (!s?.lat || !s?.lng) return;
-    heatLayer.addLatLng([s.lat, s.lng, 0.5]);
+    _allPoints.push(s);
+
+    const mode = heatmapDataSel?.value ?? "dbm";
+    let weight;
+    if (mode === "dbm") {
+        const clamped = Math.max(-120, Math.min(-50, s.signal_strength ?? -120));
+        weight = (clamped + 120) / 70;
+    } else {
+        weight = Math.min(100, s.download_speed ?? 0) / 100;
+    }
+    heatLayer.addLatLng([s.lat, s.lng, weight]);
+    showToast(`New point: ${s.carrier} ${s.network_type}`, "success", 2000);
+
+    // Update status count
+    const currentMatch = statusText.textContent.match(/(\d+) pts/);
+    const count = currentMatch ? parseInt(currentMatch[1]) + 1 : "?";
+    setStatus("live", `Live · ${count} pts`);
 });
 
-// ================== LOCATION (LOCKED ONCE) ==================
-let userMarker = null;
+// ================== LOCATION ==================
+let userMarker    = null;
 let accuracyCircle = null;
-let isLocationLocked = false;
 
-locateBtn.addEventListener("click", () => {
+locateBtn?.addEventListener("click", () => {
     if (!navigator.geolocation) {
-        showToast("Geolocation not supported", "error");
+        showToast("Geolocation not supported by this browser", "error");
         return;
     }
-
-    // reset lock if user clicks again
-    isLocationLocked = false;
 
     locateBtn.disabled = true;
     locateBtn.textContent = "⌛ Locating…";
 
     navigator.geolocation.getCurrentPosition(
         pos => {
-            if (isLocationLocked) return;
-
             const { latitude, longitude, accuracy } = pos.coords;
             const latlng = L.latLng(latitude, longitude);
 
-            console.log("LOCKED LOCATION:", latitude, longitude, "±", accuracy);
-
-            // Lock immediately
-            isLocationLocked = true;
-
-            if (userMarker) map.removeLayer(userMarker);
+            if (userMarker)    map.removeLayer(userMarker);
             if (accuracyCircle) map.removeLayer(accuracyCircle);
 
-            userMarker = L.marker(latlng)
-                .addTo(map)
-                .bindPopup(`📍 Locked location<br>±${Math.round(accuracy)}m`)
-                .openPopup();
+            userMarker = L.circleMarker(latlng, {
+                radius: 8,
+                color: "#fff",
+                weight: 2,
+                fillColor: "#3b82f6",
+                fillOpacity: 1
+            })
+            .addTo(map)
+            .bindPopup(`<b>Your Location</b><br>Accuracy: ±${Math.round(accuracy)} m`)
+            .openPopup();
 
             accuracyCircle = L.circle(latlng, {
                 radius: accuracy,
-                color: "#2563eb",
-                fillOpacity: 0.15
+                color: "#3b82f6",
+                fillOpacity: 0.08,
+                weight: 1
             }).addTo(map);
 
-            map.setView(latlng, 18);
-
-            setStatus("live", "Location locked");
-            showToast("Location locked");
+            map.setView(latlng, 18, { animate: true, duration: 0.8 });
+            showToast(`Location found (±${Math.round(accuracy)} m)`, "success");
 
             locateBtn.disabled = false;
-            locateBtn.textContent = "📍 Show My Location";
+            locateBtn.textContent = "📍 My Location";
         },
         err => {
-            console.error("GEO ERROR:", err);
-            showToast(err.message, "error");
+            const msgs = {
+                1: "Location permission denied",
+                2: "Location unavailable",
+                3: "Location request timed out"
+            };
+            showToast(msgs[err.code] ?? err.message, "error");
             locateBtn.disabled = false;
-            locateBtn.textContent = "📍 Show My Location";
+            locateBtn.textContent = "📍 My Location";
         },
-        {
-            enableHighAccuracy: true,
-            timeout: 20000,
-            maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
 });
 
-// ================== OFFLINE ==================
+// ================== OFFLINE UI ==================
 function updateOfflineUI() {
-    offlineIndicator.style.display = navigator.onLine ? "none" : "block";
+    if (offlineBar) offlineBar.style.display = navigator.onLine ? "none" : "block";
 }
-window.addEventListener("online", updateOfflineUI);
+window.addEventListener("online",  updateOfflineUI);
 window.addEventListener("offline", updateOfflineUI);
 updateOfflineUI();
 
-// ================== INIT ==================
-fetchSamples();
-// static/main.js
-
-document.addEventListener('DOMContentLoaded', () => {
-    const controlPanel = document.getElementById('control-panel');
-    const toggleBtn = document.getElementById('menu-toggle');
-
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            controlPanel.classList.toggle('collapsed');
-            
-            // Optional: Change the button text/icon
-            if (controlPanel.classList.contains('collapsed')) {
-                toggleBtn.textContent = '▲'; // Show up arrow when closed
-            } else {
-                toggleBtn.textContent = '▼'; // Show down arrow when open
-            }
+// ================== MOBILE PANEL TOGGLE ==================
+document.addEventListener("DOMContentLoaded", () => {
+    const panel     = document.getElementById("control-panel");
+    const toggleBtn = document.getElementById("menu-toggle");
+    if (toggleBtn && panel) {
+        toggleBtn.addEventListener("click", () => {
+            panel.classList.toggle("collapsed");
+            toggleBtn.textContent = panel.classList.contains("collapsed") ? "▲" : "▼";
         });
     }
 });
+
+// ================== INIT ==================
+fetchSamples();
+fetchStats();
+
+// Refresh stats every 30 s
+setInterval(fetchStats, 30_000);

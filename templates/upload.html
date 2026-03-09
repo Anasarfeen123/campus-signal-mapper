@@ -1,257 +1,320 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contribute Data · VIT Signal Map</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Contribute · VIT Signal Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#020510;
+  --card-bg:rgba(2,8,25,0.85);
+  --field-bg:rgba(255,255,255,0.035);
+  --field-hover:rgba(255,255,255,0.06);
+  --border:rgba(255,255,255,0.07);
+  --cyan:#00f0ff;
+  --cyan-glow:rgba(0,240,255,0.5);
+  --blue:#2060ff;
+  --purple:#8040ff;
+  --green:#00ff88;
+  --amber:#ffaa00;
+  --red:#ff3355;
+  --text:#d8e4f0;
+  --text-bright:#ffffff;
+  --dim:#3a4a5e;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Rajdhani',sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{
+  min-height:100vh; font-family:var(--body); color:var(--text);
+  background:var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 60% at 20% 0%, rgba(32,96,255,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 80% 100%, rgba(128,64,255,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 40% at 50% 50%, rgba(0,240,255,0.03) 0%, transparent 70%);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px; padding-bottom:max(20px,env(safe-area-inset-bottom));
+}
 
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --secondary: #64748b;
-            --bg: #f4f7f6;
-            --card: #ffffff;
-            --text: #0f172a;
-            --muted: #64748b;
-            --border: #e2e8f0;
-            --radius: 14px;
-            --shadow: 0 10px 25px rgba(0,0,0,0.08);
-        }
+/* scan lines */
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);
+}
 
-        * { box-sizing: border-box; }
+.card {
+  width:100%; max-width:400px; position:relative; z-index:1;
+  background:var(--card-bg);
+  backdrop-filter:blur(32px) saturate(1.8);
+  -webkit-backdrop-filter:blur(32px) saturate(1.8);
+  border:1px solid var(--border);
+  border-radius:4px;
+  overflow:hidden;
+  box-shadow:
+    0 0 0 1px rgba(0,240,255,0.05) inset,
+    0 40px 80px rgba(0,0,0,0.85),
+    0 0 80px rgba(0,240,255,0.05);
+  animation:rise .5s cubic-bezier(.22,1,.36,1) both;
+}
 
-        body {
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-            background: var(--bg);
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+/* corner brackets */
+.card::before,.card::after {
+  content:''; position:absolute;
+  width:14px; height:14px;
+  border-color:var(--cyan); border-style:solid; z-index:3;
+}
+.card::before { top:-1px; left:-1px; border-width:2px 0 0 2px }
+.card::after  { bottom:-1px; right:-1px; border-width:0 2px 2px 0 }
 
-        .container {
-            width: 100%;
-            max-width: 420px;
-            background: var(--card);
-            padding: 26px 28px;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-        }
+@keyframes rise { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
 
-        h1 {
-            margin: 0 0 8px;
-            font-size: 1.6rem;
-            font-weight: 700;
-            text-align: center;
-        }
+/* top scan */
+.card-scan {
+  height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:.65;
+  animation:scanPulse 3s ease-in-out infinite;
+}
+@keyframes scanPulse { 0%,100%{opacity:.35} 50%{opacity:.8} }
 
-        .subtitle {
-            text-align: center;
-            font-size: 0.9rem;
-            color: var(--muted);
-            margin-bottom: 22px;
-            line-height: 1.4;
-        }
+/* HEADER */
+.card-head {
+  padding:20px 22px 16px;
+  border-bottom:1px solid var(--border);
+  position:relative;
+}
+.card-head::before {
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(32,96,255,0.08),rgba(128,64,255,0.05),transparent);
+  pointer-events:none;
+}
+.head-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px }
+.card-head h1 {
+  font-family:var(--display); font-size:1.4rem; font-weight:700;
+  letter-spacing:2px; text-transform:uppercase; color:var(--text-bright);
+  text-shadow:0 0 20px var(--cyan-glow), 0 0 40px rgba(0,240,255,0.2);
+}
+.head-tag {
+  font-family:var(--mono); font-size:.56rem; letter-spacing:1.5px;
+  color:var(--cyan); opacity:.6; text-transform:uppercase;
+  padding:3px 7px; border:1px solid rgba(0,240,255,0.2); border-radius:2px;
+  background:rgba(0,240,255,0.04); margin-top:4px;
+}
+.card-head p { font-size:.82rem; color:var(--dim); line-height:1.5; margin-top:2px }
+.card-head strong { color:rgba(0,240,255,0.7) }
 
-        .control-group { margin-bottom: 18px; }
+/* BODY */
+.card-body { padding:18px 20px 20px; display:flex; flex-direction:column; gap:14px }
 
-        label {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
+/* INFO BOX */
+.info-box {
+  padding:10px 13px;
+  background:rgba(0,240,255,0.04);
+  border:1px solid rgba(0,240,255,0.12);
+  border-radius:3px;
+  font-family:var(--mono); font-size:.7rem; color:rgba(0,240,255,0.65); line-height:1.7;
+  letter-spacing:.3px;
+}
+.info-box span { display:block }
 
-        select, input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            font-size: 0.95rem;
-            background: #fff;
-            font-family: inherit;
-        }
+/* QUEUE */
+#queue-badge {
+  display:none; padding:8px 12px;
+  background:rgba(255,170,0,0.07); border:1px solid rgba(255,170,0,0.2);
+  border-radius:3px; font-family:var(--mono); font-size:.68rem;
+  font-weight:600; color:var(--amber); text-align:center; letter-spacing:.5px;
+}
 
-        select:focus, input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
+/* FIELD */
+.field { display:flex; flex-direction:column; gap:5px }
+.field-label {
+  font-family:var(--mono); font-size:.57rem; font-weight:600;
+  color:rgba(0,240,255,0.45); text-transform:uppercase; letter-spacing:1.2px;
+  padding-left:1px;
+}
 
-        button {
-            width: 100%;
-            padding: 12px;
-            border-radius: 10px;
-            border: none;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.05s ease, background 0.15s ease;
-        }
+select, input[type="text"], input[type="number"] {
+  width:100%; padding:10px 12px;
+  background:var(--field-bg); border:1px solid var(--border);
+  border-radius:3px; color:var(--text);
+  font-family:var(--body); font-size:.87rem;
+  color-scheme:dark;
+  transition:border-color .15s, background .15s, box-shadow .15s;
+}
+select {
+  appearance:none; cursor:pointer; padding-right:30px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M1 1l3.5 3L8 1' fill='none' stroke='%2300f0ff' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' opacity='.45'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center;
+  background-color:var(--field-bg);
+}
+select:hover, input:hover { background-color:var(--field-hover); border-color:rgba(0,240,255,0.18) }
+select:focus, input:focus {
+  outline:none; border-color:rgba(0,240,255,0.45);
+  box-shadow:0 0 0 3px rgba(0,240,255,0.06), 0 0 16px rgba(0,240,255,0.08);
+}
+select option { background:#050e1e; color:var(--text) }
+input::placeholder { color:var(--dim); opacity:1 }
+#custom-carrier { margin-top:7px }
 
-        button:active { transform: scale(0.98); }
+/* DETECT BTN */
+#detect-carrier-btn {
+  margin-top:7px; width:100%; padding:9px;
+  background:transparent; border:1px solid rgba(0,240,255,0.15);
+  border-radius:3px; color:rgba(0,240,255,0.55);
+  font-family:var(--mono); font-size:.72rem; font-weight:600;
+  letter-spacing:.8px; cursor:pointer;
+  transition:background .15s, color .15s, border-color .15s;
+}
+#detect-carrier-btn:hover { background:rgba(0,240,255,0.06); color:var(--cyan); border-color:rgba(0,240,255,0.35) }
+#detect-carrier-btn:disabled { opacity:.35; cursor:not-allowed }
 
-        #contribute-btn {
-            background: var(--primary);
-            color: white;
-            margin-top: 6px;
-        }
+#carrier-status {
+  font-family:var(--mono); font-size:.66rem; color:var(--dim);
+  min-height:1.1em; margin-top:5px; display:block; letter-spacing:.3px;
+}
 
-        #contribute-btn:hover { background: var(--primary-hover); }
+/* DETAILS */
+details {
+  margin-top:7px; padding:10px 12px;
+  background:rgba(0,240,255,0.02); border:1px solid rgba(0,240,255,0.1);
+  border-radius:3px; font-size:.76rem; color:var(--dim);
+}
+summary {
+  cursor:pointer; font-family:var(--mono); font-size:.67rem; font-weight:600;
+  color:rgba(0,240,255,0.5); list-style:none;
+  display:flex; align-items:center; gap:7px; letter-spacing:.5px;
+}
+summary::before { content:'▶'; font-size:.55rem; transition:transform .2s; color:var(--cyan); opacity:.6 }
+details[open] summary::before { transform:rotate(90deg) }
+.help-steps { margin:9px 0 0 10px; padding:0; line-height:2.1; color:#556070 }
+.help-steps strong { color:rgba(0,240,255,0.6) }
 
-        #detect-carrier-btn {
-            background: #f1f5f9;
-            color: #334155;
-            margin-top: 8px;
-            font-size: 0.85rem;
-            padding: 8px;
-        }
+/* SUBMIT */
+#contribute-btn {
+  width:100%; padding:13px;
+  border:none; border-radius:3px;
+  background:linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+  color:#fff; font-family:var(--display);
+  font-size:1rem; font-weight:700;
+  letter-spacing:2.5px; text-transform:uppercase; cursor:pointer;
+  box-shadow:0 6px 28px rgba(32,96,255,0.45), 0 0 0 1px rgba(255,255,255,0.08) inset;
+  transition:box-shadow .15s, transform .1s;
+  position:relative; overflow:hidden;
+}
+#contribute-btn::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.07),transparent);
+}
+#contribute-btn:hover { box-shadow:0 8px 36px rgba(32,96,255,0.65), 0 0 30px rgba(128,64,255,0.3), 0 0 0 1px rgba(255,255,255,0.12) inset }
+#contribute-btn:active { transform:scale(.98) }
+#contribute-btn:disabled { opacity:.45; cursor:not-allowed; box-shadow:none }
 
-        #detect-carrier-btn:hover { background: #e2e8f0; }
+/* STATUS MSG */
+.status-msg {
+  font-family:var(--mono); font-size:.7rem; min-height:1.3em;
+  text-align:center; color:var(--dim); letter-spacing:.4px; transition:color .2s;
+}
+.status-msg.success { color:var(--green) }
+.status-msg.warn { color:var(--amber) }
+.status-msg.error { color:var(--red) }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+/* FOOTER */
+.card-foot {
+  padding:12px 20px 16px;
+  border-top:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+}
+.back-link {
+  font-family:var(--mono); font-size:.68rem; font-weight:600;
+  color:rgba(0,240,255,0.5); text-decoration:none;
+  letter-spacing:1px; text-transform:uppercase;
+  transition:color .15s;
+  display:flex; align-items:center; gap:6px;
+}
+.back-link:hover { color:var(--cyan) }
 
-        #carrier-status, #contribution-status {
-            font-size: 0.85rem;
-            color: var(--muted);
-            margin-top: 10px;
-            text-align: center;
-            min-height: 1.2em;
-        }
-
-        .info-box {
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 0.8rem;
-            color: var(--muted);
-            margin-bottom: 18px;
-            line-height: 1.4;
-        }
-
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 22px;
-            padding-top: 14px;
-            border-top: 1px solid var(--border);
-            font-size: 0.85rem;
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .back-link:hover { text-decoration: underline; }
-
-        /* Styles for the helper details */
-        details {
-            margin-top: 8px;
-            font-size: 0.8rem;
-            color: var(--muted);
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px;
-        }
-        summary {
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .help-steps {
-            margin: 8px 0 0 16px;
-            padding: 0;
-        }
-        .help-steps li { margin-bottom: 4px; }
-
-        @media (max-width: 480px) {
-            body { padding: 10px; align-items: flex-start; }
-            .container { padding: 20px; border-radius: 20px; box-shadow: none; border: 1px solid var(--border); }
-            h1 { font-size: 1.4rem; }
-            button { padding: 15px; font-size: 1rem; }
-            #detect-carrier-btn { margin-bottom: 20px; }
-        }
-    </style>
+/* MOBILE */
+@media(max-width:440px){
+  body { padding:0; align-items:flex-end }
+  .card { border-radius:12px 12px 0 0; box-shadow:0 -24px 60px rgba(0,0,0,.8) }
+  .card::before,.card::after { display:none }
+  #contribute-btn { padding:15px; font-size:1.05rem }
+  .card-body { padding:16px 16px 28px }
+}
+</style>
 </head>
-
 <body>
+<div class="card">
+  <div class="card-scan"></div>
 
-<div class="container">
-    <h1>Contribute Signal Data</h1>
-    <p class="subtitle">
-        Help improve mobile network coverage insights inside<br>
-        <strong>VIT Chennai campus</strong>
-    </p>
+  <div class="card-head">
+    <div class="head-top">
+      <h1>Contribute</h1>
+      <span class="head-tag">VIT Chennai</span>
+    </div>
+    <p>Submit mobile coverage data for <strong>campus signal mapping</strong></p>
+  </div>
 
+  <div class="card-body">
     <div class="info-box">
-        📍 Your location is used only to verify you are on campus.<br>
-        📶 No personal data is collected or stored.
+      <span>📍 Location used only to verify campus presence</span>
+      <span>🔒 No personal data is stored or transmitted</span>
     </div>
 
-    <div class="control-group">
-        <label for="carrier-select">Mobile Carrier</label>
-        <select id="carrier-select">
-            <option value="">Select carrier</option>
-            <option value="Jio">Jio</option>
-            <option value="Airtel">Airtel</option>
-            <option value="VI">VI (Vodafone Idea)</option>
-            <option value="BSNL">BSNL</option>
-            <option value="Other">Other</option>
-        </select>
-        
-        <input type="text" id="custom-carrier" placeholder="Enter carrier name" style="display:none; margin-top:10px;">
+    <div id="queue-badge"></div>
 
-        <button type="button" id="detect-carrier-btn">
-            Detect My Carrier
-        </button>
-        <p id="carrier-status"></p>
+    <div class="field">
+      <span class="field-label">// Mobile Carrier</span>
+      <select id="carrier-select">
+        <option value="">Select carrier…</option>
+        <option value="Jio">Jio</option>
+        <option value="Airtel">Airtel</option>
+        <option value="VI">VI (Vodafone Idea)</option>
+        <option value="BSNL">BSNL</option>
+        <option value="Other">Other</option>
+      </select>
+      <input type="text" id="custom-carrier" placeholder="Enter carrier name" style="display:none">
+      <button type="button" id="detect-carrier-btn">⬡ AUTO-DETECT MY CARRIER</button>
+      <span id="carrier-status"></span>
     </div>
 
-    <div class="control-group">
-        <label for="network-select">Network Type</label>
-        <select id="network-select">
-            <option value="">Auto-detect (if available)</option>
-            <option value="5G">5G</option>
-            <option value="4G">4G</option>
-            <option value="3G">3G</option>
-            <option value="2G">2G</option>
-        </select>
+    <div class="field">
+      <span class="field-label">// Network Type</span>
+      <select id="network-select">
+        <option value="">Auto-detect (recommended)</option>
+        <option value="5G">5G</option>
+        <option value="4G">4G / LTE</option>
+        <option value="3G">3G</option>
+        <option value="2G">2G / Edge</option>
+      </select>
     </div>
 
-    <div class="control-group">
-        <label for="signal-input">Signal Strength (dBm)</label>
-        <input type="number" id="signal-input" placeholder="-100" min="-140" max="-40">
-        
-        <details>
-            <summary>How to find this? (Android)</summary>
-            <ul class="help-steps">
-                <li>Go to <strong>Settings</strong></li>
-                <li>Tap <strong>About Phone</strong> > <strong>Status</strong></li>
-                <li>Look for <strong>SIM Status</strong></li>
-                <li>Find <strong>Signal Strength</strong> (e.g., -105 dBm)</li>
-            </ul>
-        </details>
+    <div class="field">
+      <span class="field-label">// Signal Strength (dBm) — optional</span>
+      <input type="number" id="signal-input" placeholder="e.g. −105" min="-140" max="-20">
+      <details>
+        <summary>HOW TO FIND ON ANDROID</summary>
+        <ul class="help-steps">
+          <li>Settings → <strong>About Phone</strong> → Status</li>
+          <li>Tap <strong>SIM Status</strong></li>
+          <li>Read <strong>Signal Strength</strong> value</li>
+        </ul>
+      </details>
     </div>
 
-    <button id="contribute-btn">
-        Get Location & Submit
-    </button>
+    <button id="contribute-btn">Get Location &amp; Submit</button>
+    <p id="contribution-status" class="status-msg"></p>
+  </div>
 
-    <p id="contribution-status"></p>
-
+  <div class="card-foot">
     <a href="/" class="back-link">← Back to Map</a>
+  </div>
 </div>
 
 <script src="/static/upload.js"></script>
 </body>
-<small id="offline-indicator" style="display:none; color:#e11d48; text-align:center;">
-    You are offline. Submissions will sync later.
-</small>
 </html>

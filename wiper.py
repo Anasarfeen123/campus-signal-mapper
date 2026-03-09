@@ -7,3 +7,5 @@ engine = create_engine(DB_URL)
 with engine.begin() as conn:
     conn.execute(text("TRUNCATE TABLE signal_data RESTART IDENTITY;"))
     print("Remote database wiped clean.")
+    
+print("HID")
