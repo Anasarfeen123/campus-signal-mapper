@@ -1,5 +1,6 @@
 // ================== CONFIG ==================
 const API_BASE = window.location.origin; // Relative — works on any host
+const isMobile = window.innerWidth < 600;
 
 // ================== CAMPUS POLYGON ==================
 const VIT_POLYGON_COORDS = [
@@ -41,8 +42,8 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 // ================== HEATMAP ==================
 const heatLayer = L.heatLayer([], {
-    radius: 22,
-    blur: 18,
+    radius: isMobile ? 15 : 22,
+    blur: isMobile ? 12 : 18,
     maxZoom: 17,
     gradient: {
         0.0: "#3b0764",
@@ -110,8 +111,10 @@ async function fetchSamples() {
     const qs = new URLSearchParams();
     if (carrierSelect.value)  qs.set("carrier",      carrierSelect.value);
     if (networkSelect.value)  qs.set("network_type", networkSelect.value);
-    qs.set("limit", "5000");
 
+    const pointLimit = isMobile ? "1000" : "5000";
+    qs.set("limit", pointLimit);
+    
     try {
         setStatus("loading", "Loading…");
         const res = await fetch(`${API_BASE}/api/samples?${qs}`);

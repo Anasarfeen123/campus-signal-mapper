@@ -70,6 +70,13 @@ body::after {
   z-index:9999;
 }
 
+@media (max-width: 600px) {
+  body::after, .scan-line {
+    animation: none !important;
+    display: none !important;
+  }
+}
+
 .panel-inner {
   background:var(--panel-bg);
   backdrop-filter:blur(32px) saturate(1.8);
