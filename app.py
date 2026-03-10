@@ -250,6 +250,16 @@ def index():
 def upload_page():
     return render_template("upload.html")
 
+from flask import send_from_directory
+
+@app.route("/sw.js")
+def serve_sw():
+    # Serve the service worker from the root scope
+    return send_from_directory("static", "sw.js", mimetype="application/javascript")
+
+@app.route("/manifest.json")
+def serve_manifest():
+    return send_from_directory("static", "manifest.json", mimetype="application/manifest+json")
 
 # -------------------------------------------------
 # API ENDPOINTS

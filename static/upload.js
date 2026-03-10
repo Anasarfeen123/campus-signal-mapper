@@ -316,3 +316,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ── Flush any queued data on load ──
     flushQueue().then(refreshQueueBadge);
 });
+
+// Attribution:
+//  <a href="https://www.flaticon.com/free-icons/sound-wave" title="sound-wave icons">Sound-wave icons created by Upnow Graphic - Flaticon</a>
