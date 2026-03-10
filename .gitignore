@@ -1,5 +1,8 @@
+wipe.py
+
 # Python
 /__pycache__
+wiper.py
 *.pyc
 *.pyo
 *.pyd
@@ -22,5 +25,3 @@
 *.swp
 *.swo
 secret.key
-
-wiper.py
