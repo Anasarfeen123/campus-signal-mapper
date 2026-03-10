@@ -363,6 +363,95 @@ updateOfflineUI();
     if (isCollapsed) applyState();
 })();
 
+
+// ================== OFFLINE MAP DOWNLOADER ==================
+const downloadMapBtn = document.getElementById("download-map-btn");
+
+// Math to convert Latitude/Longitude to OpenStreetMap XYZ tile numbers
+function lon2tile(lon, zoom) { 
+    return (Math.floor((lon + 180) / 360 * Math.pow(2, zoom))); 
+}
+function lat2tile(lat, zoom) { 
+    return (Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom))); 
+}
+
+downloadMapBtn?.addEventListener("click", async () => {
+    if (!('caches' in window)) {
+        showToast("Offline caching not supported by this browser.", "error");
+        return;
+    }
+
+    downloadMapBtn.disabled = true;
+    downloadMapBtn.textContent = "⌛ Calculating tiles...";
+
+    // Get the North, South, East, and West edges of the campus polygon
+    const bounds = VIT_POLYGON.getBounds();
+    const n = bounds.getNorth();
+    const s = bounds.getSouth();
+    const e = bounds.getEast();
+    const w = bounds.getWest();
+
+    const tileUrls = [];
+
+    // Loop through zoom levels 15 to 19 (19 provides maximum street-level detail)
+    for (let z = 15; z <= 19; z++) {
+        const top = lat2tile(n, z);
+        const bottom = lat2tile(s, z);
+        const left = lon2tile(w, z);
+        const right = lon2tile(e, z);
+
+        for (let x = left; x <= right; x++) {
+            for (let y = top; y <= bottom; y++) {
+                tileUrls.push(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`);
+            }
+        }
+    }
+
+    try {
+        // At zoom 19, it will be around 300-400 tiles (roughly 6MB - 8MB)
+        showToast(`Downloading ${tileUrls.length} high-res tiles...`, "info", 4000);
+        
+        const cache = await caches.open("vit-map-tiles-v1");
+        
+        // Batch the downloads to prevent OpenStreetMap from blocking us for spam
+        const BATCH_SIZE = 20; 
+        let completed = 0;
+
+        for (let i = 0; i < tileUrls.length; i += BATCH_SIZE) {
+            const batch = tileUrls.slice(i, i + BATCH_SIZE);
+            
+            await Promise.all(batch.map(async (url) => {
+                try {
+                    // Only fetch if we don't already have it cached
+                    const existing = await cache.match(url);
+                    if (!existing) {
+                        const response = await fetch(url);
+                        if (response.ok) await cache.put(url, response);
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch tile:", url);
+                }
+            }));
+            
+            completed += batch.length;
+            const percent = Math.round((completed / tileUrls.length) * 100);
+            downloadMapBtn.textContent = `⬇️ Downloading... ${percent}%`;
+        }
+
+        showToast("✅ High-res map saved for offline use!", "success");
+        downloadMapBtn.textContent = "✅ Map Downloaded";
+        downloadMapBtn.style.borderStyle = "solid";
+        downloadMapBtn.style.color = "var(--green)";
+        downloadMapBtn.style.borderColor = "var(--green)";
+        
+    } catch (err) {
+        console.error("Tile download failed:", err);
+        showToast("Failed to download map. Check connection.", "error");
+        downloadMapBtn.disabled = false;
+        downloadMapBtn.textContent = "🗺️ Retry Download";
+    }
+});
+
 // ================== INIT ==================
 fetchSamples();
 fetchStats();

@@ -21,6 +21,7 @@
   }
 </script>
 <style>
+.leaflet-container { background: var(--bg) !important; }
 :root {
   --bg: #020510;
   --panel-bg: rgba(2,8,25,0.82);
@@ -384,6 +385,9 @@ select option { background:#050e1e; color:var(--text) }
       </div>
       <button id="locate-btn" class="btn btn-primary">📍 Locate Me</button>
       <button class="btn btn-ghost" onclick="window.location.href='/upload'">＋ Contribute Data</button>
+      <button id="download-map-btn" class="btn btn-ghost" style="border-style: dashed;">
+        🗺️ Download Offline Map
+      </button>
     </div>
   </div>
 </div>
