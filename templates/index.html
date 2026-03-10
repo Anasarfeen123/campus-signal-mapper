@@ -48,8 +48,12 @@ body::after {
 
 /* ── CORNER BRACKETS ── */
 .panel {
-  position:absolute; top:16px; left:16px;
-  width:280px; z-index:1000;
+  position:absolute;
+  top:16px;
+  left:16px;
+  pointer-events:auto;
+  width:280px;
+  z-index:9999;
 }
 
 .panel-inner {
@@ -58,7 +62,6 @@ body::after {
   -webkit-backdrop-filter:blur(32px) saturate(1.8);
   border:1px solid var(--border);
   border-radius:4px;
-  overflow:hidden;
   position:relative;
   box-shadow:
     0 0 0 1px rgba(0,240,255,0.06) inset,
@@ -163,7 +166,7 @@ body::after {
 }
 
 /* ── BODY ── */
-.panel-body { padding:13px 13px 15px; display:flex; flex-direction:column; gap:9px }
+.panel-body { padding:13px 13px 15px; display:flex; flex-direction:column; gap:9px; overflow-y:auto; max-height:calc(85vh - 130px); -webkit-overflow-scrolling:touch; }
 
 .field { display:flex; flex-direction:column; gap:4px }
 .field-label {
@@ -268,23 +271,45 @@ select option { background:#050e1e; color:var(--text) }
 /* ── MOBILE BOTTOM SHEET ── */
 @media(max-width:600px) {
   .panel {
-    position:fixed; top:auto; bottom:0; left:0; right:0; width:100%;
-    animation:none;
+    position:fixed;
+    top:auto; bottom:0; left:0; right:0;
+    width:100%;
+    /* REMOVE animation:none from here */
+    pointer-events:none;
+    z-index:9999;
   }
   .panel-inner {
+    /* ADD IT HERE so the panel is allowed to move */
+    animation:none; 
+    pointer-events:all;
     border-radius:12px 12px 0 0;
     border-bottom:none;
-    transition:transform .38s cubic-bezier(.32,0,.15,1);
+    height:80vh;
+    will-change:transform;
+    transition:transform .35s cubic-bezier(.32,0,.15,1);
+    overflow:visible;
   }
-  .panel.collapsed .panel-inner { transform:translateY(calc(100% - 64px)) }
+  /* Scrollable content area inside the card */
+  .panel-body {
+    height:calc(80vh - 130px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  /* Collapsed: slide almost all the way down, show just the handle+header (64px) */
+  .panel.collapsed .panel-inner {
+    transform:translateY(calc(80vh - 64px));
+  }
+  .panel:not(.collapsed) .panel-inner {
+    transform:translateY(0);
+  }
   .panel-inner::before,
   .panel-inner::after { display:none }
   .drag-handle {
     display:block; width:40px; height:4px;
     background:rgba(0,240,255,0.2); border-radius:2px;
-    margin:10px auto 0; 
+    margin:10px auto 0;
   }
-  .panel-head { padding-top:10px }
+  .panel-head { padding-top:10px; cursor:pointer; }
   .toggle-btn { display:flex }
   select,.btn { height:46px; font-size:.95rem }
   .panel-body { gap:11px; padding:13px 13px 28px }
@@ -295,7 +320,7 @@ select option { background:#050e1e; color:var(--text) }
 <body>
 <div id="map"></div>
 
-<div class="panel" id="panel">
+<div class="panel collapsed" id="panel">
   <div class="panel-inner">
     <div class="scan-line"></div>
     <div class="drag-handle"></div>
@@ -356,21 +381,5 @@ select option { background:#050e1e; color:var(--text) }
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 <script src="/static/main.js"></script>
-<script>
-const panel = document.getElementById('panel');
-const toggleBtn = document.getElementById('menu-toggle');
-if (toggleBtn) {
-  toggleBtn.addEventListener('click', () => {
-    panel.classList.toggle('collapsed');
-    toggleBtn.textContent = panel.classList.contains('collapsed') ? '▴' : '▾';
-  });
-}
-function updateOffline() {
-  document.getElementById('offline-indicator').style.display = navigator.onLine ? 'none' : 'block';
-}
-window.addEventListener('online', updateOffline);
-window.addEventListener('offline', updateOffline);
-updateOffline();
-</script>
 </body>
 </html>

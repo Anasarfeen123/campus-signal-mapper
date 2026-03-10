@@ -248,17 +248,120 @@ window.addEventListener("online",  updateOfflineUI);
 window.addEventListener("offline", updateOfflineUI);
 updateOfflineUI();
 
-// ================== MOBILE PANEL TOGGLE ==================
-document.addEventListener("DOMContentLoaded", () => {
-    const panel     = document.getElementById("control-panel");
+// ================== MOBILE PANEL ==================
+(function () {
+    const panel = document.getElementById("panel");
+    const panelInner = document.querySelector(".panel-inner");
+    const panelHead = document.querySelector(".panel-head");
     const toggleBtn = document.getElementById("menu-toggle");
-    if (toggleBtn && panel) {
-        toggleBtn.addEventListener("click", () => {
-            panel.classList.toggle("collapsed");
-            toggleBtn.textContent = panel.classList.contains("collapsed") ? "▲" : "▼";
-        });
+
+    if (!panel || !panelHead || !panelInner) return;
+
+    let isCollapsed = window.innerWidth < 600;
+    
+    // Swipe state variables
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    // The maximum distance the panel slides down (matches your CSS: 80vh - 64px)
+    function getMaxTranslate() {
+        return (window.innerHeight * 0.8) - 64;
     }
-});
+
+    // Applies the current state to the DOM
+    function applyState() {
+        panel.classList.toggle("collapsed", isCollapsed);
+        if (toggleBtn) toggleBtn.textContent = isCollapsed ? "▴" : "▾";
+        
+        // Wipe any inline styles so your CSS classes take over and animate it
+        panelInner.style.transform = '';
+        panelInner.style.transition = '';
+    }
+
+    // Standard click toggle
+    panelHead.addEventListener("click", (e) => {
+        // If they just finished a swipe, ignore the click
+        if (isDragging) return; 
+        isCollapsed = !isCollapsed;
+        applyState();
+    });
+
+    // ── TOUCH GESTURE LOGIC ──
+
+    panelHead.addEventListener("touchstart", (e) => {
+        if (window.innerWidth >= 600) return;
+        
+        startY = e.touches[0].clientY;
+        currentY = startY;
+        isDragging = false; 
+        
+        // Remove CSS transition for instant 1:1 finger tracking
+        panelInner.style.transition = "none";
+    }, { passive: true });
+
+    panelHead.addEventListener("touchmove", (e) => {
+        if (window.innerWidth >= 600) return;
+        
+        currentY = e.touches[0].clientY;
+        const deltaY = currentY - startY;
+
+        // If they barely moved, it might just be a tap.
+        if (Math.abs(deltaY) > 5) {
+            isDragging = true;
+        }
+        
+        if (!isDragging) return;
+
+        const maxTranslate = getMaxTranslate();
+        
+        // Calculate where the panel should be based on finger movement
+        let newTranslate = isCollapsed ? maxTranslate + deltaY : deltaY;
+        
+        // Clamp it so they can't drag it out of bounds
+        if (newTranslate < 0) newTranslate = 0;
+        if (newTranslate > maxTranslate) newTranslate = maxTranslate;
+        
+        // Apply the movement instantly
+        panelInner.style.transform = `translateY(${newTranslate}px)`;
+    }, { passive: true });
+
+    panelHead.addEventListener("touchend", () => {
+        if (window.innerWidth >= 600 || !isDragging) {
+            // If they just tapped, restore CSS and let the click handler take it
+            applyState();
+            return;
+        }
+
+        const deltaY = currentY - startY;
+        const threshold = 60; // How many pixels they must swipe to trigger a state change
+
+        if (isCollapsed && deltaY < -threshold) {
+            // Swiped UP hard enough from bottom
+            isCollapsed = false;
+        } else if (!isCollapsed && deltaY > threshold) {
+            // Swiped DOWN hard enough from top
+            isCollapsed = true;
+        }
+
+        // Delay resetting the dragging flag slightly so the click event doesn't fire
+        setTimeout(() => { isDragging = false; }, 50);
+
+        // Hand control back to CSS to snap into the final position
+        applyState();
+    });
+
+    // ── MAP CLICK ──
+    map.on("click", () => {
+        if (window.innerWidth < 600 && !isCollapsed) {
+            isCollapsed = true;
+            applyState();
+        }
+    });
+
+    // ── INIT ──
+    if (isCollapsed) applyState();
+})();
 
 // ================== INIT ==================
 fetchSamples();
