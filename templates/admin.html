@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Admin Dashboard · VIT Signal Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#020510; --card-bg:rgba(2,8,25,0.88);
+  --border:rgba(255,255,255,0.07); --border-accent:rgba(0,240,255,0.15);
+  --cyan:#00f0ff; --cyan-glow:rgba(0,240,255,0.5);
+  --blue:#2060ff; --purple:#8040ff; --green:#00ff88;
+  --amber:#ffaa00; --red:#ff3355;
+  --text:#d8e4f0; --text-bright:#fff; --dim:#3a4a5e;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Rajdhani',sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{
+  min-height:100vh;font-family:var(--body);color:var(--text);background:var(--bg);
+  background-image:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(32,96,255,0.1) 0%,transparent 60%);
+  padding:0 16px 48px;
+}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px)}
+
+.skip-link{position:fixed;top:-100px;left:16px;z-index:99999;background:var(--cyan);color:#000;padding:8px 16px;border-radius:0 0 4px 4px;font-family:var(--mono);font-size:.75rem;font-weight:700;transition:top .2s}
+.skip-link:focus{top:0}
+
+/* ── TOPBAR ── */
+.topbar{
+  max-width:1100px;margin:0 auto;position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 0 0;
+}
+h1{font-family:var(--display);font-size:1.5rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-bright);text-shadow:0 0 20px var(--cyan-glow)}
+.head-sub{font-family:var(--mono);font-size:.58rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+
+.btn{
+  padding:8px 14px;border:none;border-radius:3px;
+  font-family:var(--mono);font-size:.65rem;font-weight:600;
+  letter-spacing:.6px;text-transform:uppercase;cursor:pointer;
+  transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px;
+}
+.btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.btn-danger{background:rgba(255,51,85,0.1);color:var(--red);border:1px solid rgba(255,51,85,0.25)}
+.btn-danger:hover{background:rgba(255,51,85,0.18);border-color:rgba(255,51,85,0.4)}
+.btn-cyan{background:rgba(0,240,255,0.08);color:var(--cyan);border:1px solid rgba(0,240,255,0.2)}
+.btn-cyan:hover{background:rgba(0,240,255,0.14);border-color:rgba(0,240,255,0.35)}
+.btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:rgba(255,255,255,0.15)}
+
+/* ── STATS ROW ── */
+.stats-row{
+  max-width:1100px;margin:16px auto 0;position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;
+}
+.stat-card{
+  background:var(--card-bg);border:1px solid var(--border);border-radius:4px;
+  padding:14px 18px;backdrop-filter:blur(20px);
+}
+.stat-val{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--cyan);text-shadow:0 0 10px var(--cyan-glow)}
+.stat-lbl{font-family:var(--mono);font-size:.52rem;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+
+/* ── SECTION ── */
+.section{
+  max-width:1100px;margin:16px auto 0;position:relative;z-index:1;
+  background:var(--card-bg);border:1px solid var(--border);border-radius:4px;
+  overflow:hidden;backdrop-filter:blur(20px);
+}
+.section::before,.section::after{
+  content:'';position:absolute;width:10px;height:10px;
+  border-color:var(--cyan);border-style:solid;z-index:3;
+}
+.section::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.section::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+
+.section-head{
+  padding:12px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  background:rgba(0,240,255,0.02);
+}
+.section-title{font-family:var(--mono);font-size:.68rem;font-weight:600;color:rgba(0,240,255,0.5);letter-spacing:1px;text-transform:uppercase}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.68rem}
+thead{position:sticky;top:0;z-index:2}
+thead th{
+  padding:10px 14px;text-align:left;
+  font-size:.52rem;letter-spacing:1.2px;text-transform:uppercase;
+  color:rgba(0,240,255,0.4);font-weight:600;
+  border-bottom:1px solid var(--border);
+  background:rgba(2,8,25,0.98);
+}
+tbody tr{border-bottom:1px solid rgba(255,255,255,0.03);transition:background .1s}
+tbody tr:hover{background:rgba(0,240,255,0.025)}
+tbody tr.deleted{opacity:.25;pointer-events:none;text-decoration:line-through}
+tbody td{padding:9px 14px;color:var(--text);vertical-align:middle;white-space:nowrap}
+.id-col{color:var(--dim);font-size:.6rem}
+.coord-col{color:var(--dim)}
+.carrier-badge{
+  padding:2px 6px;border-radius:2px;font-size:.58rem;font-weight:700;
+  background:rgba(0,240,255,0.07);color:rgba(0,240,255,0.7);
+  border:1px solid rgba(0,240,255,0.15);letter-spacing:.3px;
+}
+.signal-col{color:var(--cyan)}
+.speed-col{color:var(--green)}
+.ts-col{font-size:.58rem;color:var(--dim)}
+.contrib-col{font-size:.62rem;color:var(--amber)}
+
+.del-btn{
+  padding:3px 8px;border:1px solid rgba(255,51,85,0.2);border-radius:2px;
+  background:transparent;color:rgba(255,51,85,0.5);
+  font-family:var(--mono);font-size:.58rem;cursor:pointer;
+  transition:all .12s;white-space:nowrap;
+}
+.del-btn:hover{background:rgba(255,51,85,0.1);color:var(--red);border-color:rgba(255,51,85,0.4)}
+.del-btn:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+
+/* ── EMPTY / LOADER ── */
+.loader{display:flex;gap:6px;justify-content:center;padding:32px}
+.loader-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);opacity:.3;animation:pulse .9s ease-in-out infinite}
+.loader-dot:nth-child(2){animation-delay:.15s}
+.loader-dot:nth-child(3){animation-delay:.3s}
+@keyframes pulse{50%{opacity:1;transform:scale(1.3)}}
+.empty{padding:32px;text-align:center;font-family:var(--mono);font-size:.72rem;color:var(--dim)}
+
+/* ── DANGER ZONE ── */
+.danger-zone{
+  max-width:1100px;margin:16px auto 0;position:relative;z-index:1;
+  background:rgba(255,51,85,0.04);border:1px solid rgba(255,51,85,0.15);
+  border-radius:4px;padding:16px 20px;
+}
+.danger-zone h3{font-family:var(--mono);font-size:.68rem;color:rgba(255,51,85,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.danger-desc{font-size:.75rem;color:var(--dim);margin-bottom:12px;line-height:1.6}
+.confirm-input{
+  padding:8px 12px;background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,51,85,0.2);border-radius:3px;
+  color:var(--text);font-family:var(--mono);font-size:.78rem;
+  width:220px;color-scheme:dark;margin-right:8px;
+}
+.confirm-input:focus{outline:2px solid var(--red);outline-offset:1px}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(14px);
+  background:rgba(2,8,25,0.95);border:1px solid rgba(0,240,255,0.2);
+  backdrop-filter:blur(20px);color:var(--text);
+  padding:9px 20px;border-radius:2px;font-family:var(--mono);font-size:.72rem;
+  letter-spacing:.5px;opacity:0;pointer-events:none;
+  transition:all .28s cubic-bezier(.22,1,.36,1);white-space:nowrap;z-index:9999;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.error{border-color:rgba(255,51,85,0.4);color:#ff6680}
+.toast.success{border-color:rgba(0,255,136,0.3);color:#66ffb0}
+
+/* ── FOOTER ── */
+.page-footer{max-width:1100px;margin:16px auto 0;position:relative;z-index:1;display:flex;gap:12px;align-items:center}
+.back-link{font-family:var(--mono);font-size:.65rem;color:rgba(0,240,255,0.5);text-decoration:none;letter-spacing:1px;text-transform:uppercase;transition:color .15s}
+.back-link:hover{color:var(--cyan)}
+.back-link:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+@media(max-width:600px){
+  thead th:nth-child(3),tbody td:nth-child(3),
+  thead th:nth-child(6),tbody td:nth-child(6){display:none}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#data-table">Skip to data table</a>
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<!-- Top bar -->
+<header class="topbar">
+  <div>
+    <h1>Admin Dashboard</h1>
+    <p class="head-sub">VIT Chennai Signal Mapper · Internal</p>
+  </div>
+  <div class="topbar-actions">
+    <a href="/admin/export" class="btn btn-cyan" aria-label="Export all data as CSV">⬇ Export CSV</a>
+    <a href="/admin/logout" class="btn btn-ghost" aria-label="Logout from admin">↩ Logout</a>
+    <a href="/" class="btn btn-ghost" aria-label="Back to map">🗺 Map</a>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats-row" role="region" aria-label="Database statistics" id="stats-row">
+  <div class="stat-card"><div class="stat-val" id="st-total">—</div><div class="stat-lbl">Total Samples</div></div>
+  <div class="stat-card"><div class="stat-val" id="st-signal">—</div><div class="stat-lbl">Avg Signal</div></div>
+  <div class="stat-card"><div class="stat-val" id="st-speed">—</div><div class="stat-lbl">Avg Speed</div></div>
+  <div class="stat-card"><div class="stat-val" id="st-5g">—</div><div class="stat-lbl">5G Readings</div></div>
+  <div class="stat-card"><div class="stat-val" id="st-carriers">—</div><div class="stat-lbl">Carriers</div></div>
+</div>
+
+<!-- Recent Data -->
+<section class="section" aria-label="Recent data submissions">
+  <div class="section-head">
+    <span class="section-title">// Recent Submissions</span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="limit-select" aria-label="Number of rows to show" style="padding:5px 8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:.62rem;color-scheme:dark;cursor:pointer">
+        <option value="50">50 rows</option>
+        <option value="100" selected>100 rows</option>
+        <option value="250">250 rows</option>
+        <option value="500">500 rows</option>
+      </select>
+      <button class="btn btn-cyan" id="refresh-btn" aria-label="Refresh table">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="table-wrap" id="table-wrap">
+    <div id="table-loader" class="loader" role="status" aria-label="Loading data">
+      <div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div>
+    </div>
+    <table id="data-table" style="display:none" aria-label="Signal data submissions">
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">Lat / Lng</th>
+          <th scope="col">Carrier</th>
+          <th scope="col">Net</th>
+          <th scope="col">Signal</th>
+          <th scope="col">Speed</th>
+          <th scope="col">Contributor</th>
+          <th scope="col">Time</th>
+          <th scope="col">Action</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    <div id="table-empty" class="empty" style="display:none">No data found.</div>
+  </div>
+</section>
+
+<!-- Danger Zone -->
+<section class="danger-zone" aria-label="Danger zone - destructive actions">
+  <h3>⚠ Danger Zone</h3>
+  <p class="danger-desc">
+    Permanently delete <strong>all</strong> signal data from the database. This action cannot be undone.
+    Type <code style="color:var(--red);font-size:.8em">DELETE_ALL</code> to confirm.
+  </p>
+  <div>
+    <input type="text" class="confirm-input" id="confirm-input" placeholder="Type DELETE_ALL" aria-label="Confirmation text for deleting all data" autocomplete="off">
+    <button class="btn btn-danger" id="wipe-btn" aria-label="Delete all signal data permanently">🗑 Wipe All Data</button>
+  </div>
+</section>
+
+<footer class="page-footer">
+  <a href="/" class="back-link">← Map</a>
+  <span style="font-family:var(--mono);font-size:.58rem;color:var(--dim)">Admin session active · <a href="/admin/logout" style="color:rgba(0,240,255,0.4);text-decoration:none">logout</a></span>
+</footer>
+
+<script>
+"use strict";
+
+const toast = document.getElementById("toast");
+function showToast(msg, type = "info", duration = 3000) {
+  toast.textContent = msg;
+  toast.className = `toast show ${type}`;
+  toast.setAttribute("role", "alert");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.classList.remove("show"); toast.removeAttribute("role"); }, duration);
+}
+
+// ── Stats ──
+async function loadStats() {
+  try {
+    const res = await fetch("/api/stats");
+    const d = await res.json();
+    document.getElementById("st-total").textContent  = d.total_samples?.toLocaleString() ?? "—";
+    document.getElementById("st-signal").textContent = d.avg_signal_dbm != null ? `${d.avg_signal_dbm} dBm` : "—";
+    document.getElementById("st-speed").textContent  = d.avg_speed_mbps != null ? `${d.avg_speed_mbps} Mbps` : "—";
+    document.getElementById("st-5g").textContent     = d.five_g_count?.toLocaleString() ?? "—";
+    document.getElementById("st-carriers").textContent = d.unique_carriers ?? "—";
+  } catch { /* non-critical */ }
+}
+
+// ── Recent data ──
+function formatTs(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-IN", { dateStyle:"short", timeStyle:"short" });
+}
+
+async function loadTable() {
+  const limit = document.getElementById("limit-select").value;
+  document.getElementById("table-loader").style.display = "flex";
+  document.getElementById("data-table").style.display = "none";
+  document.getElementById("table-empty").style.display = "none";
+
+  try {
+    const res  = await fetch(`/api/admin/recent?limit=${limit}`);
+    const data = await res.json();
+
+    document.getElementById("table-loader").style.display = "none";
+
+    if (!data.length) {
+      document.getElementById("table-empty").style.display = "block";
+      return;
+    }
+
+    const tbody = document.getElementById("table-body");
+    tbody.innerHTML = "";
+
+    data.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.id = `row-${row.id}`;
+      tr.innerHTML = `
+        <td class="id-col" aria-label="Row ID ${row.id}">${row.id}</td>
+        <td class="coord-col">${(+row.lat).toFixed(4)}, ${(+row.lng).toFixed(4)}</td>
+        <td><span class="carrier-badge">${row.carrier}</span></td>
+        <td style="color:var(--amber)">${row.network_type}</td>
+        <td class="signal-col">${row.signal_strength != null ? row.signal_strength + ' dBm' : '—'}</td>
+        <td class="speed-col">${row.download_speed  != null ? row.download_speed  + ' Mbps': '—'}</td>
+        <td class="contrib-col">${row.contributor_id ? `VIT-${row.contributor_id.slice(0,8).toUpperCase()}` : '—'}</td>
+        <td class="ts-col">${formatTs(row.created_at)}</td>
+        <td>
+          <button class="del-btn" data-id="${row.id}" aria-label="Delete row ${row.id}">✕ Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById("data-table").style.display = "table";
+
+    // Wire delete buttons
+    tbody.querySelectorAll(".del-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        if (!confirm(`Delete row #${id}?`)) return;
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/admin/delete/${id}`, { method:"POST" });
+          if (!res.ok) throw new Error();
+          document.getElementById(`row-${id}`)?.classList.add("deleted");
+          showToast(`Row #${id} deleted`, "success");
+          setTimeout(() => { document.getElementById(`row-${id}`)?.remove(); }, 800);
+        } catch {
+          btn.disabled = false;
+          showToast("Delete failed", "error");
+        }
+      });
+    });
+
+  } catch {
+    document.getElementById("table-loader").style.display = "none";
+    document.getElementById("table-empty").style.display = "block";
+    document.getElementById("table-empty").textContent = "⚠️ Failed to load data.";
+  }
+}
+
+document.getElementById("refresh-btn")?.addEventListener("click", loadTable);
+document.getElementById("limit-select")?.addEventListener("change", loadTable);
+
+// ── Wipe all ──
+document.getElementById("wipe-btn")?.addEventListener("click", async () => {
+  const confirmation = document.getElementById("confirm-input").value.trim();
+  if (confirmation !== "DELETE_ALL") {
+    showToast("Type DELETE_ALL to confirm", "error");
+    document.getElementById("confirm-input").focus();
+    return;
+  }
+  if (!confirm("⚠️ This will permanently delete ALL signal data. Proceed?")) return;
+
+  try {
+    const res = await fetch("/admin/delete-all", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "DELETE_ALL" })
+    });
+    if (!res.ok) throw new Error();
+    showToast("✅ All data wiped successfully", "success");
+    document.getElementById("confirm-input").value = "";
+    loadTable();
+    loadStats();
+  } catch {
+    showToast("Wipe failed. Check server logs.", "error");
+  }
+});
+
+// ── Init ──
+loadStats();
+loadTable();
+</script>
+</body>
+</html>

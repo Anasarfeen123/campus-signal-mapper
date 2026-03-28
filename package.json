@@ -1,0 +1,26 @@
+{
+  "name": "campus-signal-mapper",
+  "version": "1.0.0",
+  "description": "A real-time, crowd-sourced heatmap of mobile carrier performance across the VIT Chennai campus.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Anasarfeen123/campus-signal-mapper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Anasarfeen123/campus-signal-mapper/issues"
+  },
+  "homepage": "https://github.com/Anasarfeen123/campus-signal-mapper#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login · VIT Signal Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#020510; --card-bg:rgba(2,8,25,0.9);
+  --border:rgba(255,255,255,0.07); --cyan:#00f0ff; --cyan-glow:rgba(0,240,255,0.5);
+  --blue:#2060ff; --purple:#8040ff; --red:#ff3355;
+  --text:#d8e4f0; --text-bright:#fff; --dim:#3a4a5e;
+  --mono:'JetBrains Mono',monospace; --display:'Rajdhani',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{
+  min-height:100vh;font-family:var(--mono);color:var(--text);background:var(--bg);
+  background-image:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(32,96,255,0.1) 0%,transparent 60%);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.card{
+  width:100%;max-width:340px;
+  background:var(--card-bg);border:1px solid var(--border);border-radius:4px;
+  overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,.85),0 0 60px rgba(0,240,255,0.04);
+  animation:rise .4s ease both;
+}
+.card::before,.card::after{
+  content:'';position:absolute;width:12px;height:12px;
+  border-color:var(--cyan);border-style:solid;z-index:3;
+}
+.card::before{top:-1px;left:-1px;border-width:2px 0 0 2px}
+.card::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
+.card{position:relative}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+.scan-line{height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.6;animation:scan 3s ease-in-out infinite}
+@keyframes scan{0%,100%{opacity:.35}50%{opacity:.75}}
+
+.head{
+  padding:24px 24px 16px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,rgba(32,96,255,0.08),transparent);
+}
+h1{font-family:var(--display);font-size:1.4rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--text-bright);text-shadow:0 0 20px var(--cyan-glow)}
+.sub{font-size:.58rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+
+.body{padding:20px 24px 24px;display:flex;flex-direction:column;gap:14px}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field-label{font-size:.55rem;font-weight:600;color:rgba(0,240,255,0.4);text-transform:uppercase;letter-spacing:1.2px}
+input[type=password]{
+  width:100%;padding:10px 12px;
+  background:rgba(255,255,255,0.035);border:1px solid var(--border);
+  border-radius:3px;color:var(--text);font-family:var(--mono);font-size:.85rem;
+  color-scheme:dark;transition:border-color .15s,box-shadow .15s;
+}
+input[type=password]:focus{outline:2px solid var(--cyan);outline-offset:1px;border-color:rgba(0,240,255,0.45)}
+
+.error-msg{
+  padding:8px 12px;background:rgba(255,51,85,0.08);
+  border:1px solid rgba(255,51,85,0.2);border-radius:3px;
+  font-size:.68rem;color:#ff6680;letter-spacing:.3px;
+}
+
+button[type=submit]{
+  width:100%;padding:12px;border:none;border-radius:3px;
+  background:linear-gradient(135deg,var(--blue) 0%,var(--purple) 100%);
+  color:#fff;font-family:var(--display);font-size:.95rem;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 4px 20px rgba(32,96,255,0.4);
+  transition:box-shadow .15s;
+}
+button[type=submit]:hover{box-shadow:0 6px 28px rgba(32,96,255,0.6)}
+button[type=submit]:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+.back{font-size:.62rem;text-align:center;color:var(--dim)}
+.back a{color:rgba(0,240,255,0.5);text-decoration:none;letter-spacing:.5px}
+.back a:hover{color:var(--cyan)}
+.back a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="card" role="main">
+  <div class="scan-line" aria-hidden="true"></div>
+  <div class="head">
+    <h1>Admin</h1>
+    <p class="sub">VIT Signal Mapper · Restricted</p>
+  </div>
+  <div class="body">
+    {% if error %}
+    <div class="error-msg" role="alert" aria-live="assertive">
+      ❌ Incorrect password. Try again.
+    </div>
+    {% endif %}
+    <form method="POST" action="/admin/login" novalidate>
+      <div class="field" style="margin-bottom:14px">
+        <label class="field-label" for="password">// Password</label>
+        <input
+          type="password" id="password" name="password"
+          autocomplete="current-password"
+          aria-label="Admin password"
+          aria-required="true"
+          {% if error %}aria-invalid="true"{% endif %}
+          autofocus
+        >
+      </div>
+      <button type="submit" aria-label="Login to admin dashboard">LOGIN →</button>
+    </form>
+    <p class="back"><a href="/">← Back to Map</a></p>
+  </div>
+</div>
+</body>
+</html>

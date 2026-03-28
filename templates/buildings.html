@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Building Report · VIT Signal Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#020510">
+<meta name="description" content="Per-building mobile signal quality report for VIT Chennai campus.">
+<style>
+:root {
+  --bg:#020510; --card-bg:rgba(2,8,25,0.88);
+  --border:rgba(255,255,255,0.07); --border-accent:rgba(0,240,255,0.15);
+  --cyan:#00f0ff; --cyan-glow:rgba(0,240,255,0.5);
+  --blue:#2060ff; --purple:#8040ff; --green:#00ff88;
+  --amber:#ffaa00; --red:#ff3355; --orange:#ff7700;
+  --text:#d8e4f0; --text-bright:#fff; --dim:#3a4a5e;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Rajdhani',sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+  --q-excellent: #00ff88; --q-good: #38bdf8;
+  --q-fair: #ffaa00; --q-poor: #ff3355; --q-none: #3a4a5e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{
+  min-height:100vh;font-family:var(--body);color:var(--text);background:var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 80% 0%,rgba(128,64,255,0.12) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 40% at 10% 100%,rgba(32,96,255,0.1) 0%,transparent 60%);
+  padding:0 16px 48px;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);
+}
+
+.skip-link{position:fixed;top:-100px;left:16px;z-index:99999;background:var(--cyan);color:#000;padding:8px 16px;border-radius:0 0 4px 4px;font-family:var(--mono);font-size:.75rem;font-weight:700;transition:top .2s}
+.skip-link:focus{top:0}
+
+/* ── NAV ── */
+nav.topbar{
+  max-width:900px;margin:0 auto;position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0 0;
+}
+.nav-links{display:flex;border:1px solid var(--border-accent);border-radius:3px;overflow:hidden}
+.nav-link{
+  padding:7px 12px;font-family:var(--mono);font-size:.56rem;
+  letter-spacing:.8px;text-decoration:none;color:var(--dim);
+  text-transform:uppercase;border-right:1px solid var(--border-accent);
+  transition:color .15s,background .15s;
+}
+.nav-link:last-child{border-right:none}
+.nav-link:hover{color:var(--text);background:rgba(0,240,255,0.04)}
+.nav-link.active{color:var(--cyan);background:rgba(0,240,255,0.06);text-shadow:0 0 8px var(--cyan-glow)}
+.nav-link:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+
+.nav-right{display:flex;align-items:center;gap:8px}
+.lang-btn{padding:5px 10px;background:rgba(0,240,255,0.05);border:1px solid rgba(0,240,255,0.15);border-radius:2px;color:rgba(0,240,255,0.65);font-family:var(--mono);font-size:.6rem;font-weight:600;letter-spacing:.5px;cursor:pointer;transition:background .15s,color .15s}
+.lang-btn:hover{background:rgba(0,240,255,0.1);color:var(--cyan)}
+.lang-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ── PAGE HEADER ── */
+.page-header{
+  max-width:900px;margin:20px auto 0;position:relative;z-index:1;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;
+}
+.page-header h1{
+  font-family:var(--display);font-size:2rem;font-weight:700;
+  letter-spacing:3px;text-transform:uppercase;color:var(--text-bright);
+  text-shadow:0 0 30px var(--cyan-glow);
+}
+.page-header p{
+  font-family:var(--mono);font-size:.65rem;color:var(--dim);
+  letter-spacing:.8px;text-transform:uppercase;margin-top:4px;
+}
+
+/* ── FILTERS ── */
+.filters{
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+}
+.filter-select{
+  padding:7px 28px 7px 10px;
+  background:rgba(2,8,25,0.9);border:1px solid var(--border-accent);
+  border-radius:3px;color:var(--text);
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.3px;
+  appearance:none;cursor:pointer;color-scheme:dark;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M1 1l3.5 3L8 1' fill='none' stroke='%2300f0ff' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' opacity='.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+  transition:border-color .15s;
+}
+.filter-select:hover{border-color:rgba(0,240,255,0.3)}
+.filter-select:focus{outline:2px solid var(--cyan);outline-offset:1px;border-color:var(--cyan)}
+
+/* ── COVERAGE BANNER ── */
+.coverage-banner{
+  max-width:900px;margin:16px auto 0;position:relative;z-index:1;
+  background:rgba(2,8,25,0.88);border:1px solid var(--border);border-radius:4px;
+  overflow:hidden;backdrop-filter:blur(20px);
+}
+.coverage-banner::before,.coverage-banner::after{
+  content:'';position:absolute;width:10px;height:10px;
+  border-color:var(--cyan);border-style:solid;z-index:3;
+}
+.coverage-banner::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.coverage-banner::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+
+.cov-inner{padding:16px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.cov-pct{
+  font-family:var(--display);font-size:2.5rem;font-weight:700;
+  color:var(--cyan);line-height:1;text-shadow:0 0 20px var(--cyan-glow);
+  min-width:80px;
+}
+.cov-label{font-family:var(--mono);font-size:.6rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+.cov-bar-wrap{flex:1;min-width:160px}
+.cov-bar-bg{
+  height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;
+}
+.cov-bar-fill{
+  height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));
+  border-radius:3px;transition:width 1s cubic-bezier(.22,1,.36,1);
+  width:0%;
+}
+.cov-carriers{
+  display:flex;gap:12px;flex-wrap:wrap;
+}
+.cov-carrier{font-family:var(--mono);font-size:.65rem;display:flex;flex-direction:column;align-items:center;gap:3px}
+.cov-carrier-pct{color:var(--cyan);font-weight:700;font-size:.8rem}
+.cov-carrier-name{color:var(--dim);font-size:.52rem;letter-spacing:.5px;text-transform:uppercase}
+
+/* ── SORT BAR ── */
+.sort-bar{
+  max-width:900px;margin:14px auto 0;position:relative;z-index:1;
+  display:flex;align-items:center;gap:6px;
+}
+.sort-label{font-family:var(--mono);font-size:.58rem;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
+.sort-btn{
+  padding:4px 9px;background:transparent;
+  border:1px solid rgba(0,240,255,0.12);border-radius:2px;
+  color:var(--dim);font-family:var(--mono);font-size:.58rem;
+  letter-spacing:.5px;cursor:pointer;transition:all .15s;
+}
+.sort-btn:hover{color:var(--text);border-color:rgba(0,240,255,0.25)}
+.sort-btn.active{color:var(--cyan);border-color:rgba(0,240,255,0.35);background:rgba(0,240,255,0.06)}
+.sort-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ── BUILDING GRID ── */
+.building-grid{
+  max-width:900px;margin:14px auto 0;position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;
+}
+
+/* ── BUILDING CARD ── */
+.bld-card{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:4px;overflow:hidden;
+  backdrop-filter:blur(20px);
+  transition:border-color .2s,box-shadow .2s;
+  animation:cardIn .4s ease both;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.bld-card:hover{border-color:rgba(0,240,255,0.2);box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 20px rgba(0,240,255,0.04)}
+
+.bld-top{padding:14px 16px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.bld-name{font-family:var(--display);font-size:1rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-bright);line-height:1.2}
+.bld-id{font-family:var(--mono);font-size:.52rem;color:var(--dim);letter-spacing:.8px;margin-top:3px}
+
+.quality-badge{
+  flex-shrink:0;padding:4px 9px;border-radius:2px;
+  font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;white-space:nowrap;
+}
+.quality-excellent{background:rgba(0,255,136,0.12);color:var(--q-excellent);border:1px solid rgba(0,255,136,0.2)}
+.quality-good{background:rgba(56,189,248,0.1);color:var(--q-good);border:1px solid rgba(56,189,248,0.2)}
+.quality-fair{background:rgba(255,170,0,0.1);color:var(--q-fair);border:1px solid rgba(255,170,0,0.2)}
+.quality-poor{background:rgba(255,51,85,0.1);color:var(--q-poor);border:1px solid rgba(255,51,85,0.2)}
+.quality-none{background:rgba(255,255,255,0.03);color:var(--dim);border:1px solid var(--border)}
+
+.bld-meter{padding:0 16px 6px;display:flex;align-items:center;gap:8px}
+.meter-bg{flex:1;height:4px;background:rgba(255,255,255,0.05);border-radius:2px;overflow:hidden}
+.meter-fill{height:100%;border-radius:2px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.fill-excellent{background:linear-gradient(90deg,var(--green),#38ef7d)}
+.fill-good{background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.fill-fair{background:linear-gradient(90deg,var(--amber),#ffd27a)}
+.fill-poor{background:linear-gradient(90deg,var(--red),#ff6680)}
+.fill-none{background:rgba(255,255,255,0.08);width:0%!important}
+.meter-val{font-family:var(--mono);font-size:.62rem;color:var(--dim);width:60px;text-align:right;flex-shrink:0}
+
+.bld-stats{
+  padding:10px 16px 14px;
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  border-top:1px solid rgba(255,255,255,0.04);
+}
+.bstat{display:flex;flex-direction:column;gap:2px}
+.bstat-val{font-family:var(--mono);font-size:.78rem;font-weight:700;color:var(--text-bright)}
+.bstat-val.cyan{color:var(--cyan);text-shadow:0 0 8px var(--cyan-glow)}
+.bstat-val.green{color:var(--green)}
+.bstat-lbl{font-family:var(--mono);font-size:.5rem;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+
+/* ── LOADER ── */
+.loader{display:flex;gap:8px;justify-content:center;padding:48px;max-width:900px;margin:0 auto}
+.loader-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);opacity:.3;animation:pulse .9s ease-in-out infinite}
+.loader-dot:nth-child(2){animation-delay:.15s}
+.loader-dot:nth-child(3){animation-delay:.3s}
+@keyframes pulse{50%{opacity:1;transform:scale(1.3)}}
+
+/* ── FOOTER ── */
+.page-footer{
+  max-width:900px;margin:20px auto 0;position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;
+  border-top:1px solid var(--border);padding-top:14px;
+}
+.back-link{font-family:var(--mono);font-size:.65rem;font-weight:600;color:rgba(0,240,255,0.5);text-decoration:none;letter-spacing:1px;text-transform:uppercase;transition:color .15s}
+.back-link:hover{color:var(--cyan)}
+.back-link:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.note{font-family:var(--mono);font-size:.56rem;color:var(--dim);text-align:right}
+
+@media(max-width:500px){
+  .building-grid{grid-template-columns:1fr}
+  .cov-inner{gap:14px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media(prefers-contrast:high){:root{--border:rgba(255,255,255,0.2);--dim:#6a7a8e}}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#building-grid">Skip to buildings</a>
+
+<nav class="topbar" aria-label="Site navigation">
+  <div class="nav-links" role="tablist">
+    <a class="nav-link" href="/"            data-i18n="nav.map">Map</a>
+    <a class="nav-link" href="/upload"      data-i18n="nav.contribute">Contribute</a>
+    <a class="nav-link" href="/leaderboard" data-i18n="nav.leaderboard">Leaderboard</a>
+    <a class="nav-link active" href="/buildings" aria-current="page" data-i18n="nav.buildings">Buildings</a>
+  </div>
+  <div class="nav-right">
+    <button class="lang-btn" id="lang-toggle" aria-label="Switch language">தமிழ்</button>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1 data-i18n="bld.title">Building Report</h1>
+    <p data-i18n="bld.sub">Per-building signal quality across campus</p>
+  </div>
+  <div class="filters" role="group" aria-label="Filter buildings by carrier and network">
+    <select class="filter-select" id="carrier-filter" aria-label="Filter by carrier">
+      <option value="">All Carriers</option>
+      <option>Jio</option><option>Airtel</option><option>VI</option><option>BSNL</option>
+    </select>
+    <select class="filter-select" id="network-filter" aria-label="Filter by network type">
+      <option value="">All Networks</option>
+      <option>2G</option><option>3G</option><option>4G</option><option>5G</option>
+    </select>
+  </div>
+</div>
+
+<!-- Coverage Banner -->
+<section class="coverage-banner" aria-label="Campus coverage statistics" id="coverage-section">
+  <div class="cov-inner">
+    <div>
+      <div class="cov-pct" id="cov-pct" aria-label="Overall campus coverage percentage">—%</div>
+      <div class="cov-label" data-i18n="bld.coverage">Campus Coverage</div>
+    </div>
+    <div class="cov-bar-wrap">
+      <div class="cov-bar-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="cov-bar-role">
+        <div class="cov-bar-fill" id="cov-bar"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:6px;letter-spacing:.5px">
+        % of 30m grid cells with at least one reading
+      </div>
+    </div>
+    <div class="cov-carriers" id="cov-carriers" aria-label="Coverage by carrier">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- Sort bar -->
+<div class="sort-bar" role="group" aria-label="Sort buildings">
+  <span class="sort-label">Sort:</span>
+  <button class="sort-btn active" data-sort="signal" aria-pressed="true">Signal</button>
+  <button class="sort-btn" data-sort="speed"  aria-pressed="false">Speed</button>
+  <button class="sort-btn" data-sort="samples" aria-pressed="false">Samples</button>
+  <button class="sort-btn" data-sort="name"   aria-pressed="false">Name</button>
+</div>
+
+<!-- Building grid -->
+<div id="loader" class="loader" role="status" aria-label="Loading building data">
+  <div class="loader-dot"></div>
+  <div class="loader-dot"></div>
+  <div class="loader-dot"></div>
+</div>
+
+<div id="building-grid" class="building-grid" role="list" aria-label="Building signal reports" style="display:none"></div>
+
+<footer class="page-footer">
+  <a href="/" class="back-link" data-i18n="back.map">← Back to Map</a>
+  <span class="note">⚠️ Building coordinates are approximate. Contribute data to improve accuracy.</span>
+</footer>
+
+<script src="/static/i18n.js"></script>
+<script>
+"use strict";
+
+// Language toggle
+const langBtn = document.getElementById("lang-toggle");
+langBtn?.addEventListener("click", () => {
+  const next = currentLang() === "en" ? "ta" : "en";
+  setLang(next);
+  langBtn.textContent = next === "ta" ? "EN" : "தமிழ்";
+});
+langBtn.textContent = currentLang() === "ta" ? "EN" : "தமிழ்";
+
+const QUALITY_ORDER = { excellent:0, good:1, fair:2, poor:3, none:4 };
+
+let _buildingData = [];
+let _sortKey = "signal";
+
+function signalToWidth(dbm) {
+  if (dbm == null) return 0;
+  const clamped = Math.max(-120, Math.min(-50, dbm));
+  return Math.round((clamped + 120) / 70 * 100);
+}
+
+function renderBuildings(data) {
+  const grid = document.getElementById("building-grid");
+  grid.innerHTML = "";
+  grid.style.display = data.length ? "grid" : "none";
+
+  const sorted = [...data].sort((a, b) => {
+    if (_sortKey === "signal")  return (b.avg_signal ?? -999) - (a.avg_signal ?? -999);
+    if (_sortKey === "speed")   return (b.avg_speed  ?? -1)   - (a.avg_speed  ?? -1);
+    if (_sortKey === "samples") return b.samples - a.samples;
+    if (_sortKey === "name")    return a.name.localeCompare(b.name);
+    return 0;
+  });
+
+  sorted.forEach((b, i) => {
+    const fillClass = b.quality === "none" ? "fill-none" : `fill-${b.quality}`;
+    const width = signalToWidth(b.avg_signal);
+    const displayName = currentLang() === "ta" ? b.name_ta : b.name;
+    const qualityLabel = t(`quality.${b.quality}`);
+
+    const card = document.createElement("div");
+    card.className = "bld-card";
+    card.setAttribute("role", "listitem");
+    card.setAttribute("aria-label", `${displayName}: ${qualityLabel} signal`);
+    card.style.animationDelay = `${i * 50}ms`;
+
+    card.innerHTML = `
+      <div class="bld-top">
+        <div>
+          <div class="bld-name">${displayName}</div>
+          <div class="bld-id">${b.id}</div>
+        </div>
+        <div class="quality-badge quality-${b.quality}" aria-label="Signal quality: ${qualityLabel}">
+          ${qualityLabel}
+        </div>
+      </div>
+      <div class="bld-meter" aria-hidden="true">
+        <div class="meter-bg">
+          <div class="meter-fill ${fillClass}" style="width:0%" data-target="${width}%"></div>
+        </div>
+        <div class="meter-val">${b.avg_signal != null ? b.avg_signal + ' dBm' : '—'}</div>
+      </div>
+      <div class="bld-stats">
+        <div class="bstat">
+          <span class="bstat-val cyan">${b.avg_signal != null ? b.avg_signal + ' dBm' : '—'}</span>
+          <span class="bstat-lbl">Avg Signal</span>
+        </div>
+        <div class="bstat">
+          <span class="bstat-val green">${b.avg_speed != null ? b.avg_speed + ' Mbps' : '—'}</span>
+          <span class="bstat-lbl">Avg Speed</span>
+        </div>
+        <div class="bstat">
+          <span class="bstat-val">${b.samples.toLocaleString()}</span>
+          <span class="bstat-lbl" data-i18n="bld.samples">samples</span>
+        </div>
+        <div class="bstat">
+          <span class="bstat-val">${b.quality !== 'none' ? '✓' : '—'}</span>
+          <span class="bstat-lbl">Coverage</span>
+        </div>
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+
+  // Animate meter bars after paint
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".meter-fill[data-target]").forEach(el => {
+      el.style.width = el.dataset.target;
+    });
+  });
+
+  applyTranslations();
+}
+
+async function loadCoverage() {
+  try {
+    const res  = await fetch("/api/coverage");
+    const data = await res.json();
+
+    const pctEl  = document.getElementById("cov-pct");
+    const barEl  = document.getElementById("cov-bar");
+    const barRole = document.getElementById("cov-bar-role");
+    const carriersEl = document.getElementById("cov-carriers");
+
+    if (pctEl) pctEl.textContent = `${data.overall_pct}%`;
+
+    requestAnimationFrame(() => {
+      if (barEl)  barEl.style.width = `${data.overall_pct}%`;
+      if (barRole) {
+        barRole.setAttribute("aria-valuenow", data.overall_pct);
+        barRole.setAttribute("aria-label", `${data.overall_pct}% of campus has signal coverage`);
+      }
+    });
+
+    if (carriersEl && data.by_carrier) {
+      carriersEl.innerHTML = Object.entries(data.by_carrier).map(([carrier, pct]) => `
+        <div class="cov-carrier">
+          <span class="cov-carrier-pct" aria-label="${carrier}: ${pct}%">${pct}%</span>
+          <span class="cov-carrier-name">${carrier}</span>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    console.error("Coverage load failed:", err);
+  }
+}
+
+async function loadBuildings() {
+  const carrier = document.getElementById("carrier-filter").value;
+  const network = document.getElementById("network-filter").value;
+
+  const qs = new URLSearchParams();
+  if (carrier) qs.set("carrier", carrier);
+  if (network) qs.set("network_type", network);
+
+  document.getElementById("loader").style.display = "flex";
+  document.getElementById("building-grid").style.display = "none";
+
+  try {
+    const res  = await fetch(`/api/buildings?${qs}`);
+    _buildingData = await res.json();
+    document.getElementById("loader").style.display = "none";
+    renderBuildings(_buildingData);
+  } catch (err) {
+    console.error("Buildings load failed:", err);
+    document.getElementById("loader").style.display = "none";
+  }
+}
+
+// Sort buttons
+document.querySelectorAll(".sort-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    _sortKey = btn.dataset.sort;
+    document.querySelectorAll(".sort-btn").forEach(b => {
+      b.classList.toggle("active", b === btn);
+      b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+    });
+    renderBuildings(_buildingData);
+  });
+});
+
+// Filters
+document.getElementById("carrier-filter")?.addEventListener("change", loadBuildings);
+document.getElementById("network-filter")?.addEventListener("change", loadBuildings);
+
+// Re-render on language change (building names)
+document.addEventListener("langchange", () => {
+  if (_buildingData.length) renderBuildings(_buildingData);
+});
+
+// Init
+loadBuildings();
+loadCoverage();
+</script>
+</body>
+</html>
