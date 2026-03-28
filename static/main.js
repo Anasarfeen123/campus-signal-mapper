@@ -599,4 +599,7 @@ setInterval(fetchStats, 30_000);
 
 // Refresh stats every 30 s
 setInterval(fetchStats, 30_000);
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs

@@ -7,6 +7,7 @@ import csv
 import io
 import math
 import time
+<<<<<<< ours
 import requests
 from functools import wraps
 from datetime import datetime, timezone
@@ -16,6 +17,10 @@ from flask import Flask, request, jsonify, render_template, session, redirect, s
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 >>>>>>> theirs
 from flask_socketio import SocketIO, emit
+=======
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+from flask_socketio import SocketIO
+>>>>>>> theirs
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy import create_engine, text
@@ -28,6 +33,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev_secret_key')
 
 <<<<<<< ours
+<<<<<<< ours
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'vitcadmin2024')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -37,6 +43,11 @@ if not DATABASE_URL:
         "  Local:  $env:DATABASE_URL = 'sqlite:///signals.db'\n"
         "  Linux:  export DATABASE_URL='sqlite:///signals.db'"
     )
+=======
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///signals.db')
+if not os.environ.get('DATABASE_URL'):
+    print("ℹ️ DATABASE_URL not set; defaulting to sqlite:///signals.db")
+>>>>>>> theirs
 =======
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///signals.db')
 if not os.environ.get('DATABASE_URL'):
@@ -407,7 +418,10 @@ def buildings_page():
 
 
 <<<<<<< ours
+<<<<<<< ours
 =======
+=======
+>>>>>>> theirs
 @app.route("/admin", methods=["GET"])
 def admin_page():
     if not session.get("admin_logged_in"):
@@ -434,6 +448,9 @@ def admin_logout_page():
     session.pop("admin_logged_in", None)
     return redirect(url_for("index"))
 
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 from flask import send_from_directory
 
