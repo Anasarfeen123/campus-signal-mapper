@@ -240,10 +240,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // ── Network type ──
-        let networkType = networkSelect?.value || "";
-        if (!networkType && navigator.connection) {
+        let networkType = networkSelect?.value; 
+        if ((!networkType || networkType === "") && navigator.connection) {
             const et = navigator.connection.effectiveType;
-            networkType = { "4g": "4G", "3g": "3G", "2g": "2G", "slow-2g": "2G" }[et] || "";
+            networkType = { "4g": "4G", "3g": "3G", "2g": "2G", "slow-2g": "2G" }[et] || "Unknown";
         }
         if (!networkType) networkType = "Unknown";
 
