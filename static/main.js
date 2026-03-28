@@ -34,11 +34,48 @@ L.control.zoom({ position: "bottomright" }).addTo(map);
 
 VIT_POLYGON.addTo(map);
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-    className: "map-tiles"
-}).addTo(map);
+const TILE_PROVIDERS = [
+    {
+        url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    },
+    {
+        url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO',
+        subdomains: "abcd"
+    }
+];
+
+let tileProviderIndex = 0;
+let tileErrorCount = 0;
+let baseLayer = createBaseLayer(tileProviderIndex).addTo(map);
+
+function createBaseLayer(providerIndex) {
+    const provider = TILE_PROVIDERS[providerIndex];
+    return L.tileLayer(provider.url, {
+        attribution: provider.attribution,
+        maxZoom: 19,
+        className: "map-tiles",
+        subdomains: provider.subdomains
+    });
+}
+
+function switchTileProvider() {
+    if (tileProviderIndex >= TILE_PROVIDERS.length - 1) return;
+    const nextProviderIndex = tileProviderIndex + 1;
+    const nextLayer = createBaseLayer(nextProviderIndex);
+    map.removeLayer(baseLayer);
+    baseLayer = nextLayer.addTo(map);
+    tileProviderIndex = nextProviderIndex;
+    tileErrorCount = 0;
+    console.warn("Switched tile provider to fallback:", TILE_PROVIDERS[nextProviderIndex].url);
+    showToast("Primary map tiles unavailable. Switched to fallback tiles.", "warn", 4500);
+}
+
+baseLayer.on("tileerror", () => {
+    tileErrorCount += 1;
+    if (tileErrorCount >= 6) switchTileProvider();
+});
 
 // ================== HEATMAP ==================
 const heatLayer = L.heatLayer([], {
