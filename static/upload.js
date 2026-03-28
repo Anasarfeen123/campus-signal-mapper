@@ -1,4 +1,4 @@
-// static/upload.js
+// static/upload.js — updated with contributor_id and i18n
 "use strict";
 
 const VIT_POLYGON = [
@@ -8,6 +8,26 @@ const VIT_POLYGON = [
 ];
 
 const OFFLINE_QUEUE_KEY = "vit_signal_offline_queue_v2";
+const CONTRIBUTOR_KEY   = "vit_contributor_id";
+
+// ────────────────────────────────────────────
+// CONTRIBUTOR ID — anonymous, browser-persistent UUID
+// ────────────────────────────────────────────
+
+function getOrCreateContributorId() {
+    let id = localStorage.getItem(CONTRIBUTOR_KEY);
+    if (!id) {
+        // Generate a UUID v4-like random string
+        id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+            const r = (Math.random() * 16) | 0;
+            return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
+        localStorage.setItem(CONTRIBUTOR_KEY, id);
+    }
+    return id;
+}
+
+const CONTRIBUTOR_ID = getOrCreateContributorId();
 
 // ────────────────────────────────────────────
 // HELPERS
@@ -60,18 +80,18 @@ function enqueue(sample) {
 }
 
 async function flushQueue() {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine) return 0;
     const queue = getQueue();
-    if (!queue.length) return;
+    if (!queue.length) return 0;
 
     const remaining = [];
     for (const sample of queue) {
-        const { _queued_at, ...payload } = sample; // strip internal key
+        const { _queued_at, ...payload } = sample;
         try {
             const res = await fetch("/api/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ ...payload, contributor_id: CONTRIBUTOR_ID })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
         } catch {
@@ -79,7 +99,7 @@ async function flushQueue() {
         }
     }
     saveQueue(remaining);
-    return queue.length - remaining.length; // synced count
+    return queue.length - remaining.length;
 }
 
 // ────────────────────────────────────────────
@@ -102,11 +122,28 @@ function setContribStatus(msg, type = "info") {
     if (!el) return;
     el.textContent = msg;
     el.className = `status-msg ${type}`;
+    // Accessibility: announce to screen readers
+    el.setAttribute("role", msg ? "alert" : "");
 }
 
 function setCarrierStatus(msg) {
     const el = document.getElementById("carrier-status");
-    if (el) el.textContent = msg;
+    if (el) {
+        el.textContent = msg;
+        el.setAttribute("role", msg ? "status" : "");
+    }
+}
+
+// ────────────────────────────────────────────
+// CONTRIBUTOR BADGE
+// ────────────────────────────────────────────
+
+function renderContributorBadge() {
+    const badge = document.getElementById("contributor-badge");
+    if (!badge) return;
+    const shortId = `VIT-${CONTRIBUTOR_ID.slice(0, 8).toUpperCase()}`;
+    badge.textContent = `Your ID: ${shortId}`;
+    badge.title = "Your anonymous contributor ID. Check the leaderboard!";
 }
 
 // ────────────────────────────────────────────
@@ -115,48 +152,63 @@ function setCarrierStatus(msg) {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    const contributeBtn     = document.getElementById("contribute-btn");
-    const carrierSelect     = document.getElementById("carrier-select");
+    const contributeBtn      = document.getElementById("contribute-btn");
+    const carrierSelect      = document.getElementById("carrier-select");
     const customCarrierInput = document.getElementById("custom-carrier");
-    const detectBtn         = document.getElementById("detect-carrier-btn");
-    const networkSelect     = document.getElementById("network-select");
-    const signalInput       = document.getElementById("signal-input");
-    const queueBadge        = document.getElementById("queue-badge");
+    const detectBtn          = document.getElementById("detect-carrier-btn");
+    const networkSelect      = document.getElementById("network-select");
+    const signalInput        = document.getElementById("signal-input");
+    const queueBadge         = document.getElementById("queue-badge");
+    const langToggle         = document.getElementById("lang-toggle");
 
-    // Update queue badge
+    renderContributorBadge();
+
+    // ── Language toggle ──
+    if (langToggle) {
+        langToggle.addEventListener("click", () => {
+            const next = currentLang() === "en" ? "ta" : "en";
+            setLang(next);
+            langToggle.textContent = next === "ta" ? "EN" : "தமிழ்";
+        });
+        langToggle.textContent = currentLang() === "ta" ? "EN" : "தமிழ்";
+    }
+
+    // ── Queue badge ──
     function refreshQueueBadge() {
         const q = getQueue();
         if (!queueBadge) return;
-        queueBadge.textContent = q.length
-            ? `${q.length} queued offline`
-            : "";
+        queueBadge.textContent = q.length ? `${q.length} queued offline` : "";
         queueBadge.style.display = q.length ? "block" : "none";
+        queueBadge.setAttribute("aria-hidden", q.length ? "false" : "true");
     }
     refreshQueueBadge();
 
-    // ── Online event: flush queue ──
+    // ── Online event ──
     window.addEventListener("online", async () => {
         setContribStatus("Back online. Syncing…", "info");
         const synced = await flushQueue();
         refreshQueueBadge();
-        setContribStatus(
-            synced ? `✅ Synced ${synced} offline submission(s).` : "",
-            "success"
-        );
-        if (synced) setTimeout(() => setContribStatus(""), 4000);
+        if (synced) {
+            setContribStatus(`✅ Synced ${synced} offline submission(s).`, "success");
+            setTimeout(() => setContribStatus(""), 4000);
+        } else {
+            setContribStatus("", "info");
+        }
     });
 
     // ── Carrier select toggle ──
     carrierSelect?.addEventListener("change", () => {
         if (customCarrierInput) {
-            customCarrierInput.style.display =
-                carrierSelect.value === "Other" ? "block" : "none";
+            const show = carrierSelect.value === "Other";
+            customCarrierInput.style.display = show ? "block" : "none";
+            if (show) customCarrierInput.focus();
         }
     });
 
     // ── Auto-detect carrier ──
     detectBtn?.addEventListener("click", async () => {
         detectBtn.disabled = true;
+        detectBtn.setAttribute("aria-busy", "true");
         setCarrierStatus("Detecting…");
         try {
             const res  = await fetch("/api/get-carrier");
@@ -167,11 +219,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 const opts = Array.from(carrierSelect.options).map(o => o.value);
                 if (opts.includes(c)) {
                     carrierSelect.value = c;
-                    customCarrierInput.style.display = "none";
+                    if (customCarrierInput) customCarrierInput.style.display = "none";
                 } else {
                     carrierSelect.value = "Other";
-                    customCarrierInput.style.display = "block";
-                    customCarrierInput.value = c;
+                    if (customCarrierInput) {
+                        customCarrierInput.style.display = "block";
+                        customCarrierInput.value = c;
+                    }
                 }
                 setCarrierStatus(`✅ Detected: ${c}`);
             } else {
@@ -181,6 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
             setCarrierStatus("❌ Detection error. Please select manually.");
         } finally {
             detectBtn.disabled = false;
+            detectBtn.removeAttribute("aria-busy");
         }
     });
 
@@ -197,7 +252,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── Submit ──
     contributeBtn?.addEventListener("click", () => {
-        // Block WiFi submissions
         if (navigator.connection?.type === "wifi") {
             alert("⚠️  Please disconnect from Wi-Fi to submit mobile network data.");
             return;
@@ -212,6 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         setContribStatus("Getting location…", "info");
         contributeBtn.disabled = true;
+        contributeBtn.setAttribute("aria-busy", "true");
 
         navigator.geolocation.getCurrentPosition(
             pos => handleLocation(pos, carrier),
@@ -224,6 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert(msgs[err.code] ?? err.message);
                 setContribStatus("");
                 contributeBtn.disabled = false;
+                contributeBtn.removeAttribute("aria-busy");
             },
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
         );
@@ -236,21 +292,19 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("🚫 You appear to be outside the VIT Chennai campus boundary.");
             setContribStatus("");
             contributeBtn.disabled = false;
+            contributeBtn.removeAttribute("aria-busy");
             return;
         }
 
-        // ── Network type ──
-        let networkType = networkSelect?.value; 
-        if ((!networkType || networkType === "") && navigator.connection) {
+        let networkType = networkSelect?.value || "";
+        if (!networkType && navigator.connection) {
             const et = navigator.connection.effectiveType;
-            networkType = { "4g": "4G", "3g": "3G", "2g": "2G", "slow-2g": "2G" }[et] || "Unknown";
+            networkType = { "4g": "4G", "3g": "3G", "2g": "2G", "slow-2g": "2G" }[et] || "";
         }
         if (!networkType) networkType = "Unknown";
 
-        // ── Signal strength ──
         const signalStrength = parseSignalStrength(signalInput?.value);
 
-        // ── Speed test ──
         let downloadSpeed = null;
         if (navigator.onLine) {
             setContribStatus("Running speed test… (~1–2 s)", "info");
@@ -266,19 +320,19 @@ document.addEventListener("DOMContentLoaded", () => {
             carrier,
             network_type: networkType,
             signal_strength: signalStrength,
-            download_speed:  downloadSpeed
+            download_speed:  downloadSpeed,
+            contributor_id:  CONTRIBUTOR_ID,
         };
 
-        // ── Offline ──
         if (!navigator.onLine) {
             enqueue(payload);
             refreshQueueBadge();
             setContribStatus("📴 Offline — saved locally, will sync later.", "warn");
             contributeBtn.disabled = false;
+            contributeBtn.removeAttribute("aria-busy");
             return;
         }
 
-        // ── Submit ──
         try {
             setContribStatus("Submitting…", "info");
             const res    = await fetch("/api/submit", {
@@ -310,12 +364,9 @@ document.addEventListener("DOMContentLoaded", () => {
             setContribStatus("📴 Connection error — saved locally.", "warn");
         } finally {
             contributeBtn.disabled = false;
+            contributeBtn.removeAttribute("aria-busy");
         }
     }
 
-    // ── Flush any queued data on load ──
     flushQueue().then(refreshQueueBadge);
 });
-
-// Attribution:
-//  <a href="https://www.flaticon.com/free-icons/sound-wave" title="sound-wave icons">Sound-wave icons created by Upnow Graphic - Flaticon</a>
