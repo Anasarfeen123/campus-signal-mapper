@@ -7,7 +7,7 @@ import math
 import requests
 import time
 from datetime import datetime, timezone
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from flask_socketio import SocketIO, emit
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -20,13 +20,9 @@ from sqlalchemy import create_engine, text
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev_secret_key')
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL not set.\n"
-        "  Local:  $env:DATABASE_URL = 'sqlite:///signals.db'\n"
-        "  Linux:  export DATABASE_URL='sqlite:///signals.db'"
-    )
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///signals.db')
+if not os.environ.get('DATABASE_URL'):
+    print("ℹ️ DATABASE_URL not set; defaulting to sqlite:///signals.db")
 
 if "sqlite" in DATABASE_URL:
     engine = create_engine(DATABASE_URL, poolclass=NullPool)
@@ -249,6 +245,43 @@ def index():
 @app.route("/upload", methods=["GET"])
 def upload_page():
     return render_template("upload.html")
+
+
+@app.route("/leaderboard", methods=["GET"])
+def leaderboard_page():
+    return render_template("leaderboard.html")
+
+
+@app.route("/buildings", methods=["GET"])
+def buildings_page():
+    return render_template("buildings.html")
+
+
+@app.route("/admin", methods=["GET"])
+def admin_page():
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_login_page"))
+    return render_template("admin.html")
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login_page():
+    if request.method == "GET":
+        return render_template("admin_login.html", error=False)
+
+    password = (request.form.get("password") or "").strip()
+    expected_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    if password == expected_password:
+        session["admin_logged_in"] = True
+        return redirect(url_for("admin_page"))
+
+    return render_template("admin_login.html", error=True), 401
+
+
+@app.route("/admin/logout", methods=["GET"])
+def admin_logout_page():
+    session.pop("admin_logged_in", None)
+    return redirect(url_for("index"))
 
 from flask import send_from_directory
 
