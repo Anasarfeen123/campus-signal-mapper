@@ -60,8 +60,7 @@ function createBaseLayer(providerIndex) {
     return L.tileLayer(provider.url, {
         attribution: provider.attribution,
         maxZoom: 19,
-        className: "map-tiles",
-        subdomains: provider.subdomains
+        className: "map-tiles"
     });
 }
 
