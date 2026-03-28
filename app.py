@@ -10,7 +10,11 @@ import time
 import requests
 from functools import wraps
 from datetime import datetime, timezone
+<<<<<<< ours
 from flask import Flask, request, jsonify, render_template, session, redirect, send_file
+=======
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+>>>>>>> theirs
 from flask_socketio import SocketIO, emit
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -23,6 +27,7 @@ from sqlalchemy import create_engine, text
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev_secret_key')
 
+<<<<<<< ours
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'vitcadmin2024')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -32,6 +37,11 @@ if not DATABASE_URL:
         "  Local:  $env:DATABASE_URL = 'sqlite:///signals.db'\n"
         "  Linux:  export DATABASE_URL='sqlite:///signals.db'"
     )
+=======
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///signals.db')
+if not os.environ.get('DATABASE_URL'):
+    print("ℹ️ DATABASE_URL not set; defaulting to sqlite:///signals.db")
+>>>>>>> theirs
 
 if "sqlite" in DATABASE_URL:
     engine = create_engine(DATABASE_URL, poolclass=NullPool)
@@ -396,6 +406,35 @@ def buildings_page():
     return render_template("buildings.html")
 
 
+<<<<<<< ours
+=======
+@app.route("/admin", methods=["GET"])
+def admin_page():
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_login_page"))
+    return render_template("admin.html")
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login_page():
+    if request.method == "GET":
+        return render_template("admin_login.html", error=False)
+
+    password = (request.form.get("password") or "").strip()
+    expected_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    if password == expected_password:
+        session["admin_logged_in"] = True
+        return redirect(url_for("admin_page"))
+
+    return render_template("admin_login.html", error=True), 401
+
+
+@app.route("/admin/logout", methods=["GET"])
+def admin_logout_page():
+    session.pop("admin_logged_in", None)
+    return redirect(url_for("index"))
+
+>>>>>>> theirs
 from flask import send_from_directory
 
 @app.route("/sw.js")
