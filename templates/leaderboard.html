@@ -360,17 +360,15 @@ async function loadLeaderboard() {
       if (isMe) tr.classList.add("my-row");
 
       tr.innerHTML = `
-        <td class="rank-cell ${rankClass}" aria-label="Rank ${entry.rank}">${medal}${entry.rank}</td>
         <td>
           <span class="contrib-id ${isMe ? 'you' : ''}"
-                aria-label="${isMe ? 'You: ' : ''}${entry.display_id}">
-            ${entry.display_id}
+                aria-label="${isMe ? 'You: ' : ''}${entry.display_name}">
+            ${entry.display_name}
           </span>
+          <div style="font-family:var(--mono);font-size:.55rem;color:var(--dim);margin-top:2px">
+            ${entry.display_id}
+          </div>
         </td>
-        <td><span class="sub-count" aria-label="${entry.submissions} submissions">${entry.submissions.toLocaleString()}</span></td>
-        <td><span class="signal-val">${entry.avg_signal != null ? entry.avg_signal + ' dBm' : '—'}</span></td>
-        <td><span class="speed-val">${entry.avg_speed  != null ? entry.avg_speed  + ' Mbps': '—'}</span></td>
-        <td>${formatRelativeTime(entry.last_active)}</td>
       `;
       tbody.appendChild(tr);
     });

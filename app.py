@@ -46,14 +46,15 @@ else:
 # -------------------------------------------------
 
 VIT_BUILDINGS = [
-    {"id": "TT",      "name": "Technology Tower",  "name_ta": "தொழில்நுட்ப கோபுரம்", "lat": 12.8448, "lng": 80.1558, "radius_m": 90,  "floors": 8},
-    {"id": "SJT",     "name": "SJT Block",          "name_ta": "SJT தொகுதி",           "lat": 12.8425, "lng": 80.1540, "radius_m": 80,  "floors": 6},
-    {"id": "SMV",     "name": "SMV Block",          "name_ta": "SMV தொகுதி",           "lat": 12.8440, "lng": 80.1528, "radius_m": 75,  "floors": 5},
-    {"id": "GDN",     "name": "GDN Block",          "name_ta": "GDN தொகுதி",           "lat": 12.8415, "lng": 80.1570, "radius_m": 70,  "floors": 5},
-    {"id": "CDMM",    "name": "CDMM Building",      "name_ta": "CDMM கட்டிடம்",        "lat": 12.8432, "lng": 80.1560, "radius_m": 65,  "floors": 4},
-    {"id": "LIBRARY", "name": "Central Library",    "name_ta": "மத்திய நூலகம்",        "lat": 12.8435, "lng": 80.1548, "radius_m": 55,  "floors": 3},
-    {"id": "ANNA",    "name": "Anna Auditorium",    "name_ta": "அண்ணா அரங்கம்",        "lat": 12.8420, "lng": 80.1553, "radius_m": 60,  "floors": 2},
-    {"id": "HOSTEL",  "name": "Hostel Zone",        "name_ta": "விடுதி மண்டலம்",       "lat": 12.8400, "lng": 80.1545, "radius_m": 110, "floors": 7},
+    {"id": "AB1",    "name": "Academic Block 1",       "name_ta": "கல்வி தொகுதி 1",      "lat": 12.8408, "lng": 80.1535, "radius_m": 80,  "floors": 8},
+    {"id": "AB2",    "name": "Academic Block 2",       "name_ta": "கல்வி தொகுதி 2",      "lat": 12.8418, "lng": 80.1548, "radius_m": 80,  "floors": 7},
+    {"id": "AB3",    "name": "Academic Block 3",       "name_ta": "கல்வி தொகுதி 3",      "lat": 12.8425, "lng": 80.1555, "radius_m": 75,  "floors": 6},
+    {"id": "ADMIN",  "name": "Admin Block",            "name_ta": "நிர்வாக தொகுதி",      "lat": 12.8412, "lng": 80.1542, "radius_m": 60,  "floors": 7},
+    {"id": "MGA",    "name": "MG Auditorium",          "name_ta": "MG அரங்கம்",           "lat": 12.8405, "lng": 80.1550, "radius_m": 55,  "floors": 2},
+    {"id": "LIB",    "name": "Central Library",        "name_ta": "மத்திய நூலகம்",        "lat": 12.8415, "lng": 80.1560, "radius_m": 50,  "floors": 3},
+    {"id": "MAIN",   "name": "Main Building",          "name_ta": "பிரதான கட்டிடம்",     "lat": 12.8420, "lng": 80.1530, "radius_m": 70,  "floors": 5},
+    {"id": "HOSTEL", "name": "Hostel Block",           "name_ta": "விடுதி தொகுதி",       "lat": 12.8395, "lng": 80.1545, "radius_m": 100, "floors": 7},
+    {"id": "SPORTS", "name": "Sports Complex",         "name_ta": "விளையாட்டு வளாகம்",   "lat": 12.8430, "lng": 80.1570, "radius_m": 90,  "floors": 1},
 ]
 
 # -------------------------------------------------
@@ -95,7 +96,7 @@ def ensure_tables_exist():
             with engine.begin() as conn:
                 conn.execute(text(create_sql))
                 try:
-                    conn.execute(text("ALTER TABLE signal_data ADD COLUMN contributor_id TEXT DEFAULT 'anon'"))
+                    conn.execute(text("ALTER TABLE signal_data ADD COLUMN display_name TEXT DEFAULT NULL"))
                 except Exception:
                     pass
             print("✅ DB tables verified")
@@ -283,7 +284,7 @@ def admin_export():
         rows = conn.execute(text("SELECT * FROM signal_data ORDER BY created_at DESC"))
         data = [dict(r._mapping) for r in rows]
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["id", "lat", "lng", "carrier", "network_type", "signal_strength", "download_speed", "contributor_id", "created_at"])
+    writer = csv.DictWriter(output, fieldnames=["id", "lat", "lng", "carrier", "network_type", "signal_strength", "download_speed", "contributor_id", "display_name", "created_at"])
     writer.writeheader()
     for row in data:
         if hasattr(row.get("created_at"), "isoformat"):
@@ -354,12 +355,13 @@ def submit_data():
             "network_type": data.get("network_type", "Unknown").upper() if data.get("network_type") in VALID_NETWORKS else "Unknown",
             "signal_strength": _clean_signal(data.get("signal_strength")),
             "download_speed": _clean_speed(data.get("download_speed")),
-            "contributor_id": _clean_contributor_id(data.get("contributor_id"))
+            "contributor_id": _clean_contributor_id(data.get("contributor_id")),
+            "display_name": str(data.get("display_name", "") or "")[:30].strip() or None,
         }
         with engine.begin() as conn:
             conn.execute(
-                text("INSERT INTO signal_data (lat, lng, carrier, network_type, signal_strength, download_speed, contributor_id) "
-                     "VALUES (:lat, :lng, :carrier, :network_type, :signal_strength, :download_speed, :contributor_id)"),
+                text("INSERT INTO signal_data (lat, lng, carrier, network_type, signal_strength, download_speed, contributor_id, display_name) "
+                    "VALUES (:lat, :lng, :carrier, :network_type, :signal_strength, :download_speed, :contributor_id, :display_name)"),
                 payload
             )
 
@@ -419,10 +421,11 @@ def get_leaderboard():
         rows = conn.execute(text("""
             SELECT
                 contributor_id,
-                COUNT(*)                       AS submissions,
-                ROUND(AVG(signal_strength), 1) AS avg_signal,
-                ROUND(AVG(download_speed), 2)  AS avg_speed,
-                MAX(created_at)                AS last_active
+                MAX(display_name)                  AS display_name,
+                COUNT(*)                           AS submissions,
+                ROUND(AVG(signal_strength), 1)     AS avg_signal,
+                ROUND(AVG(download_speed), 2)      AS avg_speed,
+                MAX(created_at)                    AS last_active
             FROM signal_data
             WHERE contributor_id IS NOT NULL AND contributor_id != 'anon'
             GROUP BY contributor_id
@@ -439,6 +442,7 @@ def get_leaderboard():
         result.append({
             "rank": i + 1,
             "display_id": f"VIT-{cid[:8].upper()}",
+            "display_name": entry.get("display_name") or f"VIT-{cid[:8].upper()}",
             "submissions": entry["submissions"],
             "avg_signal": entry["avg_signal"],
             "avg_speed": entry["avg_speed"],

@@ -28,6 +28,9 @@ function getOrCreateContributorId() {
 }
 
 const CONTRIBUTOR_ID = getOrCreateContributorId();
+function getDisplayName() {
+    return localStorage.getItem("vit_display_name") || "";
+}
 
 // ────────────────────────────────────────────
 // HELPERS
@@ -286,6 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     async function handleLocation(position, carrier) {
+        
         const { latitude: lat, longitude: lon } = position.coords;
 
         if (!isPointInPolygon(lat, lon, VIT_POLYGON)) {
@@ -322,6 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
             signal_strength: signalStrength,
             download_speed:  downloadSpeed,
             contributor_id:  CONTRIBUTOR_ID,
+            display_name: getDisplayName(),
         };
 
         if (!navigator.onLine) {

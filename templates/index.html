@@ -69,6 +69,112 @@ body::after {
   background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
 }
 
+/* ── ONBOARDING MODAL ── */
+#onboarding-overlay {
+  position:fixed; inset:0; z-index:99998;
+  background:rgba(2,8,25,0.96);
+  backdrop-filter:blur(24px);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  animation:fadeIn .3s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+#onboarding-overlay.hidden { display:none }
+
+.ob-card {
+  width:100%; max-width:360px;
+  background:rgba(2,8,25,0.9);
+  border:1px solid rgba(0,240,255,0.2);
+  border-radius:6px; overflow:hidden;
+  box-shadow:0 0 80px rgba(0,240,255,0.08), 0 40px 80px rgba(0,0,0,.9);
+  animation:rise .4s cubic-bezier(.22,1,.36,1) both;
+}
+.ob-card::before, .ob-card::after {
+  content:''; position:absolute; width:14px; height:14px;
+  border-color:var(--cyan); border-style:solid;
+}
+.ob-card { position:relative }
+.ob-card::before { top:-1px; left:-1px; border-width:2px 0 0 2px }
+.ob-card::after  { bottom:-1px; right:-1px; border-width:0 2px 2px 0 }
+
+.ob-scan {
+  height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:.7; animation:scan 3s ease-in-out infinite;
+}
+.ob-head {
+  padding:22px 22px 14px;
+  background:linear-gradient(135deg,rgba(32,96,255,0.1),rgba(128,64,255,0.06),transparent);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.ob-head h2 {
+  font-family:var(--display); font-size:1.4rem; font-weight:700;
+  letter-spacing:2px; text-transform:uppercase; color:#fff;
+  text-shadow:0 0 20px var(--cyan-glow);
+}
+.ob-head p {
+  font-family:var(--mono); font-size:.62rem; color:var(--dim);
+  letter-spacing:.8px; margin-top:5px; text-transform:uppercase;
+}
+
+.ob-body { padding:18px 22px 20px; display:flex; flex-direction:column; gap:12px }
+
+.ob-field { display:flex; flex-direction:column; gap:5px }
+.ob-label {
+  font-family:var(--mono); font-size:.55rem; font-weight:600;
+  color:rgba(0,240,255,0.45); text-transform:uppercase; letter-spacing:1.2px;
+}
+.ob-input, .ob-select {
+  width:100%; padding:10px 12px;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+  border-radius:3px; color:#d8e4f0;
+  font-family:var(--body); font-size:.87rem;
+  color-scheme:dark;
+  transition:border-color .15s, box-shadow .15s;
+}
+.ob-select {
+  appearance:none; cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M1 1l3.5 3L8 1' fill='none' stroke='%2300f0ff' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' opacity='.45'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center;
+  padding-right:30px;
+}
+.ob-select option { background:#050e1e }
+.ob-input:focus, .ob-select:focus {
+  outline:none; border-color:rgba(0,240,255,0.4);
+  box-shadow:0 0 0 3px rgba(0,240,255,0.06);
+}
+.ob-input::placeholder { color:#3a4a5e }
+
+.ob-row { display:grid; grid-template-columns:1fr 1fr; gap:10px }
+
+.ob-join-btn {
+  width:100%; padding:13px; border:none; border-radius:3px;
+  background:linear-gradient(135deg,var(--blue) 0%,var(--purple) 100%);
+  color:#fff; font-family:var(--display);
+  font-size:1rem; font-weight:700;
+  letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+  box-shadow:0 6px 28px rgba(32,96,255,0.4);
+  transition:box-shadow .15s;
+  margin-top:4px;
+}
+.ob-join-btn:hover { box-shadow:0 8px 36px rgba(32,96,255,0.65) }
+.ob-join-btn:focus-visible { outline:2px solid var(--cyan); outline-offset:2px }
+
+.ob-guest-btn {
+  width:100%; padding:8px; border:1px solid rgba(255,255,255,0.08);
+  border-radius:3px; background:transparent;
+  color:rgba(255,255,255,0.3); font-family:var(--mono);
+  font-size:.65rem; letter-spacing:.8px; cursor:pointer;
+  transition:color .15s, border-color .15s;
+  text-transform:uppercase;
+}
+.ob-guest-btn:hover { color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.18) }
+
+.ob-error {
+  font-family:var(--mono); font-size:.65rem; color:var(--red);
+  text-align:center; min-height:1em; letter-spacing:.3px;
+}
+
 /* ── PANEL ── */
 .panel {
   position:absolute; top:16px; left:16px;
@@ -427,6 +533,15 @@ select option { background:#050e1e; color:var(--text) }
     </div>
 
     <div class="panel-body" id="menu-content">
+        <div id="user-badge" style="display:none; font-family:var(--mono); font-size:.65rem;
+          color:var(--cyan); padding:7px 10px; background:rgba(0,240,255,0.05);
+          border:1px solid rgba(0,240,255,0.12); border-radius:3px;
+          align-items:center; justify-content:space-between; gap:8px">
+          <span id="user-badge-text"></span>
+          <button id="edit-profile-btn" style="background:transparent; border:none;
+            color:rgba(0,240,255,0.4); font-family:var(--mono); font-size:.58rem;
+            cursor:pointer; letter-spacing:.5px; padding:0" aria-label="Edit profile">✎ Edit</button>
+        </div>
       <div class="field">
         <span class="field-label" data-i18n="layer.label">// Data Layer</span>
         <select id="heatmap-data" aria-label="Select data layer">
@@ -470,7 +585,48 @@ select option { background:#050e1e; color:var(--text) }
     </div>
   </div>
 </nav>
-
+<!-- ── ONBOARDING MODAL ── -->
+<div id="onboarding-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+  <div class="ob-card">
+    <div class="ob-scan" aria-hidden="true"></div>
+    <div class="ob-head">
+      <h2 id="ob-title">Join Signal Map</h2>
+      <p>VIT Chennai · Crowd-sourced coverage tracker</p>
+    </div>
+    <div class="ob-body">
+      <div class="ob-field">
+        <label class="ob-label" for="ob-name">// Your Name <span style="color:var(--red)">*</span></label>
+        <input class="ob-input" type="text" id="ob-name" placeholder="e.g. Arjun Kumar"
+               maxlength="30" autocomplete="name" aria-required="true">
+      </div>
+      <div class="ob-row">
+        <div class="ob-field">
+          <label class="ob-label" for="ob-branch">// Branch</label>
+          <select class="ob-select" id="ob-branch">
+            <option value="">Select…</option>
+            <option>CSE</option><option>ECE</option><option>EEE</option>
+            <option>MECH</option><option>CIVIL</option><option>IT</option>
+            <option>AIDS</option><option>AIML</option><option>Other</option>
+          </select>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-year">// Year</label>
+          <select class="ob-select" id="ob-year">
+            <option value="">Select…</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
+            <option value="PG">PG</option>
+          </select>
+        </div>
+      </div>
+      <p class="ob-error" id="ob-error" aria-live="polite"></p>
+      <button class="ob-join-btn" id="ob-join-btn">Join →</button>
+      <button class="ob-guest-btn" id="ob-guest-btn">Continue as Guest</button>
+    </div>
+  </div>
+</div>
 <div id="toast" class="toast" aria-live="polite"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -479,5 +635,81 @@ select option { background:#050e1e; color:var(--text) }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="/static/i18n.js"></script>
 <script src="/static/main.js"></script>
+
+<script>
+// ── ONBOARDING ──
+(function () {
+  const overlay   = document.getElementById("onboarding-overlay");
+  const joinBtn   = document.getElementById("ob-join-btn");
+  const guestBtn  = document.getElementById("ob-guest-btn");
+  const nameInput = document.getElementById("ob-name");
+  const errorEl   = document.getElementById("ob-error");
+
+  function saveProfile(name, branch, year) {
+    localStorage.setItem("vit_display_name", name);
+    localStorage.setItem("vit_user_branch",  branch || "");
+    localStorage.setItem("vit_user_year",    year   || "");
+    localStorage.setItem("vit_onboarded",    "1");
+  }
+
+  function closeModal() {
+    overlay.classList.add("hidden");
+    overlay.setAttribute("aria-hidden", "true");
+    // Show name badge in panel
+    const name = localStorage.getItem("vit_display_name") || "";
+    const branch = localStorage.getItem("vit_user_branch") || "";
+    const badgeEl = document.getElementById("user-badge");
+    if (badgeEl && name) {
+      badgeEl.textContent = `👤 ${name}${branch ? " · " + branch : ""}`;
+      badgeEl.style.display = "block";
+    }
+  }
+
+  // Show modal if not onboarded yet
+  if (!localStorage.getItem("vit_onboarded")) {
+    overlay.classList.remove("hidden");
+    overlay.removeAttribute("aria-hidden");
+    setTimeout(() => nameInput?.focus(), 100);
+  } else {
+    closeModal();
+  }
+
+  joinBtn?.addEventListener("click", () => {
+    const name   = nameInput.value.trim();
+    const branch = document.getElementById("ob-branch").value;
+    const year   = document.getElementById("ob-year").value;
+    if (!name) {
+      errorEl.textContent = "Please enter your name to continue.";
+      nameInput.focus();
+      return;
+    }
+    errorEl.textContent = "";
+    saveProfile(name, branch, year);
+    closeModal();
+  });
+
+  guestBtn?.addEventListener("click", () => {
+    const guestName = "Guest_" + Math.random().toString(36).slice(2, 6).toUpperCase();
+    saveProfile(guestName, "", "");
+    closeModal();
+  });
+
+  // Allow Enter key on name field
+  nameInput?.addEventListener("keydown", e => {
+    if (e.key === "Enter") joinBtn.click();
+  });
+
+  // Profile edit button
+  const editBtn = document.getElementById("edit-profile-btn");
+  editBtn?.addEventListener("click", () => {
+    overlay.classList.remove("hidden");
+    overlay.removeAttribute("aria-hidden");
+    nameInput.value = localStorage.getItem("vit_display_name") || "";
+    document.getElementById("ob-branch").value = localStorage.getItem("vit_user_branch") || "";
+    document.getElementById("ob-year").value   = localStorage.getItem("vit_user_year")   || "";
+    nameInput.focus();
+  });
+})();
+</script>
 </body>
 </html>
