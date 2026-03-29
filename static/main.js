@@ -590,6 +590,10 @@ downloadMapBtn?.addEventListener("click", async () => {
 });
 
 // ================== INIT ==================
+// Force Leaflet to recalculate map dimensions before the heatLayer
+// tries to draw — prevents "source height is 0" CanvasRenderingContext2D error.
+map.invalidateSize();
+
 fetchSamples();
 fetchStats();
 setInterval(fetchStats, 30_000);
